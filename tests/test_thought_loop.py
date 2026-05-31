@@ -165,5 +165,37 @@ class TestThoughtLoopJEPAIntegration(unittest.TestCase):
         self.assertGreater(after, before)
 
 
+class TestThoughtLoopEmotionAndEpisodicMemory(unittest.TestCase):
+    def setUp(self):
+        self.loop = _make_thought_loop()
+
+    def test_think_returns_emotion_vector(self):
+        trace = self.loop.think({"flood"})
+        self.assertIn("emotion", trace)
+        self.assertIsInstance(trace["emotion"], list)
+        self.assertEqual(len(trace["emotion"]), 5)
+
+    def test_think_returns_jepa_emotion_delta(self):
+        trace = self.loop.think({"crisis"})
+        self.assertIn("jepa_emotion_delta", trace)
+        self.assertEqual(len(trace["jepa_emotion_delta"]), 5)
+        self.assertTrue(any(delta >= 0 for delta in trace["jepa_emotion_delta"]))
+
+    def test_feedback_stores_episodic_memory(self):
+        self.loop.feedback({"flood"}, "barrier", 2.0, {"safe"}, emotion=[0.5, 0.1, 0.2, 0.1, 0.2])
+        episodes = self.loop.memory.get_episodic_memory(limit=10)
+        self.assertGreaterEqual(len(episodes), 1)
+        self.assertEqual(episodes[-1]["action"], "barrier")
+        self.assertIn("emotion", episodes[-1])
+
+    def test_emotional_trend_calculation(self):
+        self.loop.feedback({"flood"}, "barrier", 2.0, {"safe"}, emotion=[0.6, 0.1, 0.1, 0.2, 0.2])
+        self.loop.feedback({"crisis"}, "evacuate", 3.0, {"evacuated"}, emotion=[0.9, 0.2, 0.1, 0.4, 0.1])
+        trend = self.loop.memory.get_emotional_trend(n=10)
+        self.assertEqual(trend["count"], 2)
+        self.assertEqual(len(trend["avg_vector"]), 5)
+        self.assertGreater(trend["avg_vector"][0], 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()

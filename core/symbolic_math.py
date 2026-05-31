@@ -598,3 +598,386 @@ def compute_calculus(query: str) -> CalculusResult | None:
         return CalculusResult(kind="integral", variable=variable, expression=integ_expr, result=result, steps=steps)
 
     return None
+
+
+# ── Definite Integral ─────────────────────────────────────────────────────────
+
+@dataclass
+class DefiniteIntegralResult:
+    expression: str
+    lower: float
+    upper: float
+    variable: str
+    antiderivative: str
+    result: str
+    steps: list[str]
+
+
+def _extract_definite_integral(query: str) -> tuple[str, float, float, str] | None:
+    q = (query or "").strip().lower()
+    m = re.search(
+        r"integral\s+from\s+([0-9.]+)\s+to\s+([0-9.]+)\s+(.+?)\s*d([a-z])$",
+        q, flags=re.I,
+    )
+    if not m:
+        m = re.search(
+            r"int_\{([0-9.]+)\}\^\{([0-9.]+)\}\s*(.+?)\s*\,d([a-z])",
+            q, flags=re.I,
+        )
+    if not m:
+        return None
+    lower = float(m.group(1))
+    upper = float(m.group(2))
+    expr = m.group(3).strip()
+    variable = m.group(4).lower()
+    return expr, lower, upper, variable
+
+
+def _eval_poly_at(poly: dict[int, float], x: float) -> float:
+    total = 0.0
+    for power, coeff in poly.items():
+        total += coeff * (x ** power)
+    return total
+
+
+def compute_definite_integral(query: str) -> DefiniteIntegralResult | None:
+    info = _extract_definite_integral(query)
+    if not info:
+        return None
+    expr, lower, upper, variable = info
+    normalized = _normalize_calculus_expression(expr)
+    steps: list[str] = [
+        f"Detect definite integral from {lower} to {upper}.",
+        f"Normalize expression: {normalized}",
+    ]
+
+    poly = _parse_polynomial(expr, variable)
+    if poly is None:
+        return None
+
+    antiderivative_poly: dict[int, float] = {}
+    term_chunks = [chunk for chunk in re.findall(r"[+-]?[^+-]+", normalized) if chunk]
+    for index, chunk in enumerate(term_chunks, start=1):
+        described = _describe_integral_term(chunk, variable, index)
+        if described is None:
+            return None
+        step_text, integral_poly = described
+        steps.append(step_text)
+        _poly_add(antiderivative_poly, integral_poly, 1.0)
+
+    antiderivative_str = _poly_to_string(antiderivative_poly, variable)
+    steps.append(f"Antiderivative F({variable}) = {antiderivative_str}")
+
+    f_upper = _eval_poly_at(antiderivative_poly, upper)
+    f_lower = _eval_poly_at(antiderivative_poly, lower)
+    result_val = f_upper - f_lower
+
+    steps.append(f"F({upper}) = {_format_number(f_upper)}")
+    steps.append(f"F({lower}) = {_format_number(f_lower)}")
+    steps.append(f"Result = F({upper}) - F({lower}) = {_format_number(result_val)}")
+
+    return DefiniteIntegralResult(
+        expression=expr,
+        lower=lower,
+        upper=upper,
+        variable=variable,
+        antiderivative=antiderivative_str,
+        result=_format_number(result_val),
+        steps=steps,
+    )
+
+
+# ── Chain Rule & Advanced Derivatives ─────────────────────────────────────────
+
+def _extract_inner_function(normalized: str, variable: str) -> tuple[str, str, str] | None:
+    """Detect patterns like sin(2*x), cos(x^2), exp(3*x), ln(x^2+1).
+    Returns (outer_func, inner_expr, inner_normalized) or None.
+    """
+    m = re.match(r"(sin|cos|tan|exp|ln|log)\((.+)\)$", normalized)
+    if not m:
+        return None
+    outer = m.group(1)
+    inner_raw = m.group(2).strip()
+    return outer, inner_raw, inner_raw
+
+
+def _derivative_of(expr: str, variable: str) -> tuple[str, list[str]] | None:
+    """Compute derivative of a single expression (no product rule)."""
+    normalized = _normalize_calculus_expression(expr)
+    steps: list[str] = [f"Compute derivative of {expr} with respect to {variable}."]
+
+    # Pure variable
+    if normalized == variable:
+        return "1", steps + [f"d/d{variable}({variable}) = 1"]
+
+    # Constant
+    try:
+        float(normalized)
+        return "0", steps + [f"d/d{variable}({normalized}) = 0 (constant)"]
+    except ValueError:
+        pass
+
+    # Trig / exp / ln basics
+    basic_rules: dict[str, str] = {
+        f"sin({variable})": f"cos({variable})",
+        f"cos({variable})": f"-sin({variable})",
+        f"tan({variable})": f"sec^2({variable})",
+        f"exp({variable})": f"exp({variable})",
+        f"ln({variable})": f"1/({variable})",
+        f"log({variable})": f"1/({variable}*ln(10))",
+    }
+    if normalized in basic_rules:
+        return basic_rules[normalized], steps + [f"Use basic derivative rule: d/d{variable}({normalized}) = {basic_rules[normalized]}"]
+
+    # Power rule: x^n
+    pow_m = re.fullmatch(rf"{re.escape(variable)}\*\*([+-]?\d+\.?\d*)", normalized)
+    if pow_m:
+        n = float(pow_m.group(1))
+        result = f"{_format_number(n)}*{variable}^{_format_number(n-1)}" if (n - 1) != 1 else f"{_format_number(n)}*{variable}"
+        if n == 2:
+            result = f"2*{variable}"
+        elif n == 1:
+            result = "1"
+        steps.append(f"Apply power rule: d/d{variable}({variable}^{_format_number(n)}) = {result}")
+        return result, steps
+
+    # Chain rule: sin(expr), cos(expr), etc.
+    chain = _extract_inner_function(normalized, variable)
+    if chain:
+        outer, inner_raw, inner_norm = chain
+        inner_deriv, inner_steps = _derivative_of(inner_raw, variable) if inner_raw != variable else ("1", [f"d/d{variable}({variable}) = 1"])
+        inner_str = inner_raw.replace("**", "^")
+
+        deriv_rules = {
+            "sin": f"cos({inner_str})",
+            "cos": f"-sin({inner_str})",
+            "tan": f"sec^2({inner_str})",
+            "exp": f"exp({inner_str})",
+            "ln": f"1/({inner_str})",
+            "log": f"1/({inner_str}*ln(10))",
+        }
+        outer_deriv = deriv_rules.get(outer)
+        if not outer_deriv:
+            return None
+
+        if inner_deriv == "1":
+            result = outer_deriv
+            steps.append(f"Apply chain rule: d/d{variable}({outer}({inner_str})) = {outer_deriv}")
+        else:
+            result = f"{outer_deriv} * ({inner_deriv})"
+            steps.extend(inner_steps)
+            steps.append(f"Apply chain rule: d/d{variable}({outer}({inner_str})) = {outer_deriv} * d/d{variable}({inner_str}) = {result}")
+        return result, steps
+
+    return None
+
+
+def compute_derivative_advanced(query: str) -> CalculusResult | None:
+    """Extended derivative computation with chain rule and product rule."""
+    deriv_info = _extract_derivative_expression(query)
+    if not deriv_info:
+        return None
+    variable, deriv_expr = deriv_info
+    normalized = _normalize_calculus_expression(deriv_expr)
+
+    # Product rule detection: f(x)*g(x) where both contain variable
+    prod_parts = re.findall(r"[^+]+", normalized)
+    # Look for multiplication pattern
+    prod_match = re.fullmatch(r"([a-z0-9*.^()]+)\*([a-z0-9*.^()]+)", normalized)
+    if prod_match:
+        left = prod_match.group(1)
+        right = prod_match.group(2)
+        left_has_var = variable in left
+        right_has_var = variable in right
+        if left_has_var and right_has_var:
+            left_deriv, left_steps = _derivative_of(left, variable)
+            right_deriv, right_steps = _derivative_of(right, variable)
+            if left_deriv and right_deriv:
+                left_str = left.replace("**", "^")
+                right_str = right.replace("**", "^")
+                result = f"({left_deriv})*{right_str} + {left_str}*({right_deriv})"
+                steps = [
+                    f"Detect product: {left_str} * {right_str}",
+                    f"f = {left_str}, f' = {left_deriv}",
+                    f"g = {right_str}, g' = {right_deriv}",
+                    f"Apply product rule: f'*g + f*g' = {result}",
+                ]
+                return CalculusResult(kind="derivative", variable=variable, expression=deriv_expr, result=result, steps=steps)
+
+    # Chain rule or basic derivative
+    result = _derivative_of(deriv_expr, variable)
+    if result:
+        result_str, steps = result
+        return CalculusResult(kind="derivative", variable=variable, expression=deriv_expr, result=result_str, steps=steps)
+
+    return None
+
+
+# ── Algebra / Matrix Detection ────────────────────────────────────────────────
+
+@dataclass
+class AlgebraResult:
+    kind: str  # "determinant", "matrix_multiply", "matrix_add", "equation"
+    expression: str
+    result: str
+    steps: list[str]
+
+
+def _extract_matrix_expr(query: str) -> str | None:
+    """Detect matrix expressions like [[1,2],[3,4]] or det([[1,2],[3,4]])."""
+    q = (query or "").strip().lower()
+    # det([[1,2],[3,4]])
+    m = re.search(r"det\s*\(?\s*(\[\[.+\]\])\s*\)?", q, flags=re.I)
+    if m:
+        return m.group(1)
+    return None
+
+
+def compute_algebra(query: str) -> AlgebraResult | None:
+    q = (query or "").strip().lower()
+    matrix_expr = _extract_matrix_expr(q)
+    if matrix_expr:
+        from core.matrix_math import matrix_determinant
+        import json
+        try:
+            mat = json.loads(matrix_expr)
+            mat = [[float(x) for x in row] for row in mat]
+            det, steps = matrix_determinant(mat)
+            return AlgebraResult(
+                kind="determinant",
+                expression=matrix_expr,
+                result=_format_number(det),
+                steps=[f"Detect determinant of {len(mat)}x{len(mat)} matrix."] + steps,
+            )
+        except Exception:
+            return None
+    return None
+
+
+# ── Equation Solving ──────────────────────────────────────────────────────────
+
+@dataclass
+class EquationResult:
+    equation: str
+    variable: str
+    solutions: list[float]
+    steps: list[str]
+
+
+def _extract_equation(query: str) -> tuple[str, str] | None:
+    """Detect patterns like 'solve x^2 - 4 = 0' or '2*x + 3 = 7'."""
+    q = (query or "").strip()
+    q_lower = q.lower()
+
+    # "solve ..." pattern
+    m = re.match(r"solve\s+(.+?)\s*=\s*(.+)$", q, flags=re.I)
+    if m:
+        return m.group(1).strip(), m.group(2).strip()
+
+    # Bare equation with "=" but not calculus/matrix
+    if "=" in q_lower and not re.search(r"d/d[a-z]|integral|integrate|det\s*\[|matrix", q_lower):
+        m = re.match(r"^(.+?)\s*=\s*(.+)$", q, flags=re.I)
+        if m:
+            return m.group(1).strip(), m.group(2).strip()
+
+    return None
+
+
+def _normalize_for_poly(text: str, variable: str = "x") -> dict[int, float] | None:
+    """Parse an expression into {power: coeff} dict, handling parentheses."""
+    normalized = _normalize_calculus_expression(text)
+    if not normalized:
+        return None
+
+    # Handle parentheses by wrapping for _parse_polynomial
+    # Replace ( with -, ) with + to handle simple grouping
+    # e.g. (x+1) -> treated as x+1
+    # e.g. -(x^2-4) -> negate each term inside
+    if "(" in normalized:
+        # Try to unwrap simple parenthesized expressions
+        # e.g. "(x**2-4)" -> "x**2-4"
+        # e.g. "2*(x**2-4)" -> "2*x**2-8"
+        parts = re.findall(r"[^()]+", normalized)
+        if len(parts) == 1:
+            normalized = parts[0]
+        else:
+            return None  # Complex parenthesized expression
+
+    poly = _parse_polynomial(normalized, variable)
+    return poly
+
+
+def _poly_to_dict(poly: dict[int, float]) -> dict[int, float]:
+    return {k: v for k, v in poly.items() if abs(v) > 1e-12}
+
+
+def solve_equation(query: str) -> EquationResult | None:
+    info = _extract_equation(query)
+    if not info:
+        return None
+    left_str, right_str = info
+    variable = "x"
+    steps: list[str] = [
+        f"Detect equation: {left_str} = {right_str}",
+        "Move all terms to left side.",
+    ]
+
+    left_norm = _normalize_for_poly(left_str, variable)
+    right_norm = _normalize_for_poly(right_str, variable)
+    if left_norm is None or right_norm is None:
+        return None
+
+    # Compute left - right = 0
+    poly: dict[int, float] = {}
+    for power, coeff in left_norm.items():
+        poly[power] = poly.get(power, 0.0) + coeff
+    for power, coeff in right_norm.items():
+        poly[power] = poly.get(power, 0.0) - coeff
+
+    poly = _poly_to_dict(poly)
+    if not poly:
+        return None
+
+    poly_str = _poly_to_string(poly, variable)
+    steps.append(f"Combined expression: {poly_str} = 0")
+
+    coeff2 = poly.get(2, 0.0)
+    coeff1 = poly.get(1, 0.0)
+    const = poly.get(0, 0.0)
+
+    if coeff2 != 0 and all(p in (0, 1, 2) for p in poly):
+        # Quadratic: ax^2 + bx + c = 0
+        a, b, c = coeff2, coeff1, const
+        disc = b * b - 4 * a * c
+        steps.append(f"Quadratic formula: a={_format_number(a)}, b={_format_number(b)}, c={_format_number(c)}")
+        steps.append(f"Discriminant = {_format_number(b)}^2 - 4*({_format_number(a)})*({_format_number(c)}) = {_format_number(disc)}")
+        if disc < 0:
+            steps.append(f"Discriminant < 0, no real solutions.")
+            return EquationResult(equation=query, variable=variable, solutions=[], steps=steps)
+        sqrt_disc = math.sqrt(disc)
+        steps.append(f"sqrt({_format_number(disc)}) = {_format_number(sqrt_disc)}")
+        s1 = round((-b + sqrt_disc) / (2 * a), 6)
+        s2 = round((-b - sqrt_disc) / (2 * a), 6)
+        solutions = sorted([s1, s2])
+        steps.append(f"{variable} = [{_format_number(-b)} +/- {_format_number(sqrt_disc)}] / {_format_number(2*a)}")
+        steps.append(f"Solutions: {variable} = {_format_number(s1)}, {_format_number(s2)}")
+        return EquationResult(equation=query, variable=variable, solutions=solutions, steps=steps)
+
+    if coeff1 != 0 and const != 0 and all(p in (0, 1) for p in poly):
+        # Linear: ax + b = 0
+        steps.append(f"Linear equation: {_format_number(coeff1)}*{variable} + {_format_number(const)} = 0")
+        sol = round(-const / coeff1, 6)
+        steps.append(f"{variable} = {_format_number(-const)} / {_format_number(coeff1)} = {_format_number(sol)}")
+        return EquationResult(equation=query, variable=variable, solutions=[sol], steps=steps)
+
+    if coeff1 != 0 and all(p in (0, 1) for p in poly):
+        steps.append(f"Linear equation: {_format_number(coeff1)}*{variable} = 0")
+        return EquationResult(equation=query, variable=variable, solutions=[0.0], steps=steps)
+
+    if const == 0 and coeff1 == 0 and all(p == 0 for p in poly):
+        steps.append("Identity: 0 = 0, all values are solutions.")
+        return EquationResult(equation=query, variable=variable, solutions=[], steps=steps)
+
+    return None
+
+    return EquationResult(equation=query, variable=variable, solutions=solutions, steps=steps)

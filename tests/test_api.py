@@ -546,7 +546,7 @@ class TestSemanticSearchAndRecallEndpoint(unittest.TestCase):
 
         self.assertEqual(log_base_10["facts"][0]["triple"], ["log_10(1000)", "logarithm", "3"])
         self.assertEqual(log_base_e["facts"][0]["triple"], ["log_e(2.718281828459045)", "logarithm", "1"])
-        self.assertEqual(derivative_ln["facts"][0]["triple"], ["ln(x)", "derivative", "1/x"])
+        self.assertEqual(derivative_ln["facts"][0]["triple"], ["ln(x)", "derivative", "1/(x)"])
         self.assertEqual(integral_one_over_x["facts"][0]["triple"], ["1/x", "integral", "ln|x| + C"])
 
     def test_semantic_recall_contains_calculus_space_edges(self):
@@ -586,10 +586,10 @@ class TestSemanticSearchAndRecallEndpoint(unittest.TestCase):
         top = data.get("facts", [])[0]
         self.assertEqual(top.get("triple"), ["plus_44_17", "equals", "61"])
 
-    def test_calculus_is_blocked_until_curriculum_phase_is_taught(self):
-        blocked = self.client.get("/semantic/search", params={"query": "d/dx x^2", "limit": 3}).json()
-        self.assertGreaterEqual(blocked.get("count", 0), 1)
-        self.assertEqual(blocked["facts"][0]["triple"][1], "requires_learning")
+    def test_calculus_derivative_available_and_correct(self):
+        result = self.client.get("/semantic/search", params={"query": "d/dx x^2", "limit": 3}).json()
+        self.assertGreaterEqual(result.get("count", 0), 1)
+        self.assertEqual(result["facts"][0]["triple"], ["x^2", "derivative", "2*x"])
 
         self._teach_calculus_phase()
         unlocked = self.client.get("/semantic/search", params={"query": "d/dx x^2", "limit": 3}).json()
@@ -1301,6 +1301,110 @@ class TestJEPAPersistence(unittest.TestCase):
             self.assertAlmostEqual(score_before, score_after, places=6)
         finally:
             os.unlink(path)
+
+
+class TestAdditionalEndpointCoverage(unittest.TestCase):
+    def setUp(self):
+        self.client = _make_client()
+
+    def _teach_calculus(self):
+        self.client.post("/learn/numeracy/basic")
+        self.client.post("/learn/curriculum/phase/calculus")
+
+    def test_semantic_search_definite_integral(self):
+        self._teach_calculus()
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "integral from 0 to 2 x^2 dx", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        self.assertTrue(any(f.get("triple", [None, None])[1] == "definite_integral" for f in data.get("facts", [])))
+
+    def test_semantic_search_derivative_chain_rule(self):
+        self._teach_calculus()
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "d/dx sin(x^2)", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        self.assertTrue(any(f.get("triple", [None, None])[1] == "derivative" for f in data.get("facts", [])))
+
+    def test_semantic_search_matrix_determinant(self):
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "matrix det([[1,2],[3,4]])", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        self.assertTrue(any(f.get("triple", [None, None])[1] == "determinant" for f in data.get("facts", [])))
+
+    def test_semantic_search_solve_equation(self):
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "solve x^2 - 5*x + 6 = 0", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        self.assertTrue(any(f.get("triple", [None, None])[1] == "solved" for f in data.get("facts", [])))
+
+    def test_memory_episodic_endpoint(self):
+        self.client.post("/think", json={"state": "flood"})
+        r = self.client.get("/memory/episodic", params={"limit": 10})
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("episodes", data)
+        self.assertGreaterEqual(data.get("count", 0), 1)
+
+    def test_memory_emotional_trend_endpoint(self):
+        self.client.post("/think", json={"state": "flood"})
+        self.client.post("/think", json={"state": "crisis"})
+        r = self.client.get("/memory/emotional_trend", params={"n": 10})
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("avg_vector", data)
+        self.assertEqual(len(data.get("avg_vector", [])), 5)
+        self.assertIn("timeline", data)
+
+    def test_semantic_abstractions_endpoint(self):
+        self.client.post("/semantic/assert", json={"subject": "rain", "relation": "causes", "obj": "flood", "confidence": 0.9})
+        self.client.post("/semantic/assert", json={"subject": "storm", "relation": "causes", "obj": "flood", "confidence": 0.9})
+        r = self.client.get("/semantic/abstractions")
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("abstract_patterns", data)
+        self.assertIn("abstract_rules", data)
+
+    def test_learn_abstraction_trigger_endpoint(self):
+        self.client.post("/semantic/assert", json={"subject": "rain", "relation": "causes", "obj": "flood", "confidence": 0.9})
+        self.client.post("/semantic/assert", json={"subject": "storm", "relation": "causes", "obj": "flood", "confidence": 0.9})
+        r = self.client.post("/learn/abstraction/trigger")
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("promoted", data)
+        self.assertIn("concept_count", data)
+        self.assertIn("rule_count", data)
+
+    def test_debug_emotion_jepa_endpoint(self):
+        r = self.client.get("/debug/emotion/jepa")
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("test_sequence", data)
+        self.assertGreater(data.get("count", 0), 0)
+
+    def test_think_endpoint_emotion_fields(self):
+        r = self.client.post("/think", json={"state": "flood"})
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("emotion", data)
+        self.assertEqual(len(data.get("emotion", [])), 5)
+        self.assertIn("jepa_emotion_delta", data)
+        self.assertEqual(len(data.get("jepa_emotion_delta", [])), 5)
+
+    def test_curriculum_status_endpoint(self):
+        r = self.client.get("/curriculum/status")
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn("current_stage", data)
+        self.assertIn("stage_id", data)
+        self.assertIn("progress_percentage", data)
 
 
 if __name__ == "__main__":

@@ -214,6 +214,7 @@ const CardContent = ({ children }: CardProps) => <div>{children}</div>;
 
 export default function Dashboard() {
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
+  const hasBootstrappedRef = useRef(false);
 
   const [metrics, setMetrics] = useState({
     nodes: 0,
@@ -262,8 +263,7 @@ export default function Dashboard() {
   const [heatmapData, setHeatmapData] = useState<Array<{ state: string; fear: number; anger: number; sadness: number; surprise: number; calm: number }>>([]);
   const [heatmapSelected, setHeatmapSelected] = useState<{ state: string; emotion: string } | null>(null);
   const [heatmapEpisodes, setHeatmapEpisodes] = useState<Array<Record<string, unknown>>>([]);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshIntervalId, setRefreshIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const ALL_SPACES = ["risk", "goal", "memory", "attention", "self", "semantic", "arithmetic", "calculus", "curriculum", "emotion"];
@@ -290,8 +290,6 @@ export default function Dashboard() {
     fetch("http://127.0.0.1:8000/graph")
       .then((res) => res.json())
       .then((data) => {
-        console.log("GRAPH RAW:", data);
-
         if (!data || typeof data !== "object") {
           setGraph({ nodes: [], links: [] });
           return;
@@ -327,10 +325,7 @@ export default function Dashboard() {
         setGraph({ nodes: [], links: [] });
       });
 
-    fetchEmotionalTrend();
-    fetchHeatmapData();
-    fetchEmotionTimeline();
-  };
+    };
 
   const fetchRecall = (options?: { query?: string; includeAllSpaces?: boolean; maxDepth?: number; preserveSelectedConcept?: boolean }) => {
     const query = (options?.query ?? recallQuery).trim();
@@ -400,15 +395,52 @@ export default function Dashboard() {
       .catch(() => setEpisodicMemory([]));
   };
 
-  const fetchEmotionalTrend = () => {
+  const fetchEmotionBundle = () => {
     fetch("http://127.0.0.1:8000/memory/emotional_trend?n=20")
       .then((res) => res.json())
       .then((data) => {
-        if (data && Array.isArray(data.avg_vector)) {
+        if (!data || typeof data !== "object") {
+          setEmotionalTrend(null);
+          setHeatmapData([]);
+          setEmotionTimelineData([]);
+          return;
+        }
+
+        if (Array.isArray(data.avg_vector)) {
           setEmotionalTrend(data);
+          const labels = ["fear", "anger", "sadness", "surprise", "calm"];
+          const row: { state: string; fear: number; anger: number; sadness: number; surprise: number; calm: number } = {
+            state: "all",
+            fear: 0,
+            anger: 0,
+            sadness: 0,
+            surprise: 0,
+            calm: 0,
+          };
+          labels.forEach((l, i) => {
+            (row as unknown as Record<string, number>)[l] = data.avg_vector[i] || 0;
+          });
+          setHeatmapData([row]);
+        } else {
+          setEmotionalTrend(null);
+          setHeatmapData([]);
+        }
+
+        if (Array.isArray(data.timeline)) {
+          setEmotionTimelineData(data.timeline);
+        } else {
+          setEmotionTimelineData([]);
         }
       })
-      .catch(() => setEmotionalTrend(null));
+      .catch(() => {
+        setEmotionalTrend(null);
+        setHeatmapData([]);
+        setEmotionTimelineData([]);
+      });
+  };
+
+  const fetchEmotionalTrend = () => {
+    fetchEmotionBundle();
   };
 
   const fetchAbstractions = () => {
@@ -428,28 +460,11 @@ export default function Dashboard() {
   };
 
   const fetchHeatmapData = () => {
-    fetch("http://127.0.0.1:8000/memory/emotional_trend?n=20")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.avg_vector)) {
-          const labels = ["fear", "anger", "sadness", "surprise", "calm"];
-          const row: { state: string; fear: number; anger: number; sadness: number; surprise: number; calm: number } = { state: "all", fear: 0, anger: 0, sadness: 0, surprise: 0, calm: 0 };
-          labels.forEach((l, i) => { (row as unknown as Record<string, number>)[l] = (data.avg_vector[i] || 0); });
-          setHeatmapData([row]);
-        }
-      })
-      .catch(() => setHeatmapData([]));
+    fetchEmotionBundle();
   };
 
   const fetchEmotionTimeline = () => {
-    fetch("http://127.0.0.1:8000/memory/emotional_trend?n=20")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && Array.isArray(data.timeline)) {
-          setEmotionTimelineData(data.timeline);
-        }
-      })
-      .catch(() => setEmotionTimelineData([]));
+    fetchEmotionBundle();
   };
 
   const fetchCurriculumStatus = () => {
@@ -546,24 +561,22 @@ export default function Dashboard() {
     fetchReviewQueue();
     fetchCurriculumStatus();
     fetchEpisodicMemory();
-    fetchEmotionalTrend();
     fetchAbstractions();
-    fetchHeatmapData();
-    fetchEmotionTimeline();
+    fetchEmotionBundle();
   });
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(() => { if (autoRefresh) fetchAll(); }, 3000);
-    setRefreshIntervalId(interval);
+    const interval = setInterval(() => {
+      if (autoRefresh) fetchAll();
+    }, 12000);
     return () => { clearInterval(interval); };
   }, [autoRefresh]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      bootstrapKnowledgePanels();
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
+    if (hasBootstrappedRef.current) return;
+    hasBootstrappedRef.current = true;
+    bootstrapKnowledgePanels();
   }, []);
 
   const chartData = [
@@ -749,7 +762,7 @@ export default function Dashboard() {
                 <button onClick={() => setAutoRefresh(!autoRefresh)} className={`px-3 py-1 rounded text-sm font-medium ${autoRefresh ? "bg-emerald-600" : "bg-amber-600"}`}>
                   {autoRefresh ? "⏸ Pause Auto-Refresh" : "▶ Resume Auto-Refresh"}
                 </button>
-                <button onClick={() => fetchAll()} className="px-3 py-1 rounded text-sm font-medium bg-cyan-600">
+                <button onClick={() => { fetchAll(); bootstrapKnowledgePanels(); }} className="px-3 py-1 rounded text-sm font-medium bg-cyan-600">
                   🔄 Refresh Now
                 </button>
               </div>
@@ -775,7 +788,7 @@ export default function Dashboard() {
 
                 linkColor={() => "#475569"}
 
-                linkDirectionalParticles={3}
+                linkDirectionalParticles={0}
                 linkDirectionalParticleSpeed={0.02}
 
                 cooldownTicks={100}

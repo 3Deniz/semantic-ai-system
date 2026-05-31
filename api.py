@@ -61,7 +61,8 @@ from learning.online_learning import OnlineLearner
 from memory.graph_store import GraphStore
 from memory.concept_space_embeddings import ConceptSpaceEmbeddings
 from core.pdf_ingestion import PDFIngestionError
-from core.symbolic_math import compute_arithmetic, compute_calculus
+from core.symbolic_math import compute_arithmetic, compute_calculus, compute_definite_integral, compute_derivative_advanced, compute_algebra, solve_equation
+from core.symbolic_math import _format_number
 from core.numeracy import (
     can_compute_expression,
     basic_numeracy_facts,
@@ -1101,28 +1102,28 @@ def _record_loop_artifacts(state, action: str, base_scores: dict, thought_trace:
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     global _thought_loop
-    # ✅ Load persisted knowledge graph
+    # Load persisted knowledge graph
     _graph_store.load(_kg)
-    print(f"✅ Knowledge graph loaded ({len(_kg.triples)} triples)")
+    print(f"[OK] Knowledge graph loaded ({len(_kg.triples)} triples)")
 
-    print("🔥 RL training started...")
+    print("[TRAIN] RL training started...")
     main.train()
-    print("✅ RL training complete")
+    print("[OK] RL training complete")
 
-    # ✅ Restore JEPA weights from disk (if available); otherwise warm-start from Q-table
+    # Restore JEPA weights from disk (if available); otherwise warm-start from Q-table
     try:
         _jepa.load(JEPA_WEIGHTS_FILE)
-        print(f"✅ JEPA weights restored from {JEPA_WEIGHTS_FILE} ({_jepa._trained_samples} samples)")
+        print(f"[OK] JEPA weights restored from {JEPA_WEIGHTS_FILE} ({_jepa._trained_samples} samples)")
     except FileNotFoundError:
         jepa_updates = _train_jepa_from_qtable(epochs=JEPA_WARMUP_EPOCHS)
-        print(f"✅ JEPA offline training complete ({jepa_updates} samples, trained={_jepa.is_trained})")
+        print(f"[OK] JEPA offline training complete ({jepa_updates} samples, trained={_jepa.is_trained})")
 
-    # ✅ Restore curriculum state from disk (if available)
+    # Restore curriculum state from disk (if available)
     try:
         _curriculum.load(CURRICULUM_STATE_FILE)
-        print(f"✅ Curriculum state restored from {CURRICULUM_STATE_FILE} (stage={_curriculum.current_stage} {_curriculum.stage_label})")
+        print(f"[OK] Curriculum state restored from {CURRICULUM_STATE_FILE} (stage={_curriculum.current_stage} {_curriculum.stage_label})")
     except FileNotFoundError:
-        print("✅ Curriculum state initialised at stage 0 (LITERACY)")
+        print("[OK] Curriculum state initialised at stage 0 (LITERACY)")
 
     _thought_loop = ThoughtLoop(main, _jepa, simulate_outcome, main.Q, ACTIONS)
     _thought_loop.embedding.kg = _kg
@@ -1151,13 +1152,13 @@ async def lifespan(application: FastAPI):
     threading.Thread(target=loop, daemon=True).start()
     yield
 
-    # ✅ Persist knowledge graph, JEPA weights, and curriculum state on shutdown
+    # Persist knowledge graph, JEPA weights, and curriculum state on shutdown
     _graph_store.save(_kg)
-    print("✅ Knowledge graph saved")
+    print("[OK] Knowledge graph saved")
     _jepa.save(JEPA_WEIGHTS_FILE)
-    print(f"✅ JEPA weights saved to {JEPA_WEIGHTS_FILE}")
+    print(f"[OK] JEPA weights saved to {JEPA_WEIGHTS_FILE}")
     _curriculum.save(CURRICULUM_STATE_FILE)
-    print(f"✅ Curriculum state saved to {CURRICULUM_STATE_FILE}")
+    print(f"[OK] Curriculum state saved to {CURRICULUM_STATE_FILE}")
 
 # =========================
 # ✅ FASTAPI
@@ -1779,8 +1780,12 @@ def _query_answer_policy(query: str) -> dict[str, object]:
     tokens = _tokenize_query(normalized)
     symbolic_arithmetic = compute_arithmetic(normalized) is not None
     symbolic_calculus = compute_calculus(normalized) is not None
+    symbolic_def_integral = bool(re.search(r"integral\s+from\s+[0-9.]+", normalized, flags=re.I))
+    symbolic_algebra = bool(re.search(r"det\s*\[|matrix", normalized, flags=re.I))
+    symbolic_equation = bool(re.search(r"solve|=", normalized, flags=re.I) and "integral" not in normalized and "derivative" not in normalized and "det" not in normalized)
+    symbolic_derivative = bool(re.search(r"d/d[a-z]|derivative\s+of", normalized, flags=re.I))
 
-    if symbolic_arithmetic or symbolic_calculus:
+    if symbolic_arithmetic or symbolic_calculus or symbolic_def_integral or symbolic_algebra or symbolic_equation or symbolic_derivative:
         return {
             "should_answer": True,
             "reason": "symbolic_path",
@@ -1885,6 +1890,10 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
     )
     arithmetic = compute_arithmetic(query)
     calculus = compute_calculus(query)
+    def_integral = compute_definite_integral(query) if re.search(r"integral\s+from\s+[0-9.]+", query, flags=re.I) else None
+    adv_deriv = compute_derivative_advanced(query) if re.search(r"d/d[a-z]|derivative\s+of", query, flags=re.I) else None
+    algebra = compute_algebra(query) if re.search(r"det\s*\[|matrix", query, flags=re.I) else None
+    equation = solve_equation(query) if re.search(r"solve|=", query, flags=re.I) and "integral" not in query and "derivative" not in query and "det" not in query else None
     arithmetic_key = None
     arithmetic_result = None
     arithmetic_missing: list[str] = []
@@ -1901,7 +1910,14 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
             arithmetic_missing = missing
             arithmetic_result = None
 
-    if explicit_calculus_intent and calculus is not None:
+    if explicit_calculus_intent and (calculus is not None or def_integral is not None or adv_deriv is not None):
+        arithmetic = None
+        arithmetic_key = None
+        arithmetic_result = None
+        arithmetic_missing = []
+
+    # Equation or algebra results suppress arithmetic (to avoid spurious extraction like '2-40' from 'solve x^2-4=0')
+    if equation is not None or algebra is not None:
         arithmetic = None
         arithmetic_key = None
         arithmetic_result = None
@@ -1924,7 +1940,7 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
 
     # If the query has no lexical tokens and no symbolic math intent, do not
     # fallback to broad KG matches.
-    if not tokens and arithmetic is None and calculus is None:
+    if not tokens and arithmetic is None and calculus is None and def_integral is None and adv_deriv is None and algebra is None and equation is None:
         return []
 
     usage_lookup: dict[tuple[str, str, str], float] = {}
@@ -2046,6 +2062,74 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
                 "space": "calculus",
                 "variable": calculus.variable,
                 "solution_trace": calculus.steps,
+            },
+        })
+
+    if def_integral is not None:
+        results.append({
+            "triple": [def_integral.expression, "definite_integral", def_integral.result],
+            "confidence": 0.99,
+            "score": 1.03,
+            "ranking": {"confidence": 0.99, "recency": 1.0, "frequency": 1.0, "source_quality": 1.0},
+            "provenance": {
+                "source_type": "symbolic_calculus",
+                "source_document": "runtime_definite_integral",
+                "source_text": query,
+                "space": "calculus",
+                "variable": def_integral.variable,
+                "lower": def_integral.lower,
+                "upper": def_integral.upper,
+                "antiderivative": def_integral.antiderivative,
+                "solution_trace": def_integral.steps,
+            },
+        })
+
+    if adv_deriv is not None:
+        results.append({
+            "triple": [adv_deriv.expression, adv_deriv.kind, adv_deriv.result],
+            "confidence": 0.99,
+            "score": 1.02,
+            "ranking": {"confidence": 0.99, "recency": 1.0, "frequency": 1.0, "source_quality": 1.0},
+            "provenance": {
+                "source_type": "symbolic_calculus",
+                "source_document": "runtime_derivative",
+                "source_text": query,
+                "space": "calculus",
+                "variable": adv_deriv.variable,
+                "solution_trace": adv_deriv.steps,
+            },
+        })
+
+    if algebra is not None:
+        results.append({
+            "triple": [algebra.expression, algebra.kind, algebra.result],
+            "confidence": 0.99,
+            "score": 1.04,
+            "ranking": {"confidence": 0.99, "recency": 1.0, "frequency": 1.0, "source_quality": 1.0},
+            "provenance": {
+                "source_type": "symbolic_algebra",
+                "source_document": "runtime_algebra",
+                "source_text": query,
+                "space": "arithmetic",
+                "solution_trace": algebra.steps,
+            },
+        })
+
+    if equation is not None:
+        sol_str = ", ".join(_format_number(s) for s in equation.solutions) if equation.solutions else "no real solutions"
+        results.append({
+            "triple": [equation.equation, "solved", sol_str],
+            "confidence": 0.99,
+            "score": 1.04,
+            "ranking": {"confidence": 0.99, "recency": 1.0, "frequency": 1.0, "source_quality": 1.0},
+            "provenance": {
+                "source_type": "symbolic_algebra",
+                "source_document": "runtime_equation",
+                "source_text": query,
+                "space": "arithmetic",
+                "variable": equation.variable,
+                "solutions": equation.solutions,
+                "solution_trace": equation.steps,
             },
         })
 
