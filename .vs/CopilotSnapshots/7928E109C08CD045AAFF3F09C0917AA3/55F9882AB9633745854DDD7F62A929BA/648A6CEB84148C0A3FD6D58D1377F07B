@@ -1,0 +1,54 @@
+﻿# ======================
+# ✅ PYTHON
+# ======================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+venv/
+.env/
+.aider*
+# ======================
+# ✅ NODE / NEXT.JS
+# ======================
+node_modules/
+.next/
+out/
+dist/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ======================
+# ✅ OS
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# ✅ IDE
+# ======================
+.vscode/
+.idea/
+
+# ======================
+# ✅ GENERATED FILES
+# ======================
+*.json
+
+# ama bunu istersen EXCLUDE ET:
+!package.json
+!package-lock.json
+!policy.json
+
+# ======================
+# ✅ OPTIONAL (AI)
+# ======================
+q.json
+policy_counts.json
+``
