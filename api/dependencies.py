@@ -41,7 +41,7 @@ from memory.graph_store import GraphStore
 from memory.concept_space_embeddings import ConceptSpaceEmbeddings
 from core.number_parser import NumberParser
 from core.pdf_ingestion import PDFIngestionError
-from core.symbolic_math import compute_arithmetic, compute_calculus, compute_definite_integral, compute_derivative_advanced, compute_algebra, solve_equation
+from core.symbolic_math import compute_arithmetic, compute_calculus, compute_definite_integral, compute_derivative_advanced, compute_algebra, solve_equation, detect_sequence_pattern
 from core.symbolic_math import _format_number
 from core.numeracy import (
     can_compute_expression,
@@ -848,6 +848,28 @@ def _tokenize_query(value: str) -> set[str]:
             tokens.update(parts)
     return tokens
 
+def _extract_sequence_from_query(query: str) -> list[float] | None:
+    """Extract a number sequence from a query like '3,6,9,15,24,?'."""
+    q = (query or "").strip()
+    if not re.search(r'\d+\s*,\s*\d+\s*,\s*\d+', q):
+        return None
+    # Remove trailing question mark
+    q = re.sub(r'\s*\?\s*$', '', q)
+    # Split by comma
+    parts = [p.strip() for p in q.split(',')]
+    numbers: list[float] = []
+    for part in parts:
+        if not part:
+            continue
+        try:
+            numbers.append(float(part))
+        except ValueError:
+            return None
+    if len(numbers) >= 3:
+        return numbers
+    return None
+
+
 def _known_semantic_tokens() -> set[str]:
     known: set[str] = set()
     for s, r, o, _c in getattr(_kg, "triples", []):
@@ -958,6 +980,8 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
     adv_deriv = compute_derivative_advanced(query) if re.search(r"d/d[a-z]|derivative\s+of", query, flags=re.I) else None
     algebra = compute_algebra(query) if re.search(r"det\s*\[|matrix", query, flags=re.I) else None
     equation = solve_equation(query) if re.search(r"solve|=", query, flags=re.I) and "integral" not in query and "derivative" not in query and "det" not in query else None
+    seq_nums = _extract_sequence_from_query(query)
+    sequence = detect_sequence_pattern(seq_nums) if seq_nums else None
     arithmetic_key = None
     arithmetic_result = None
     arithmetic_missing = []
@@ -1154,6 +1178,15 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
             "confidence": 0.99, "score": 1.04,
             "ranking": {"confidence": 0.99, "recency": 1.0, "frequency": 1.0, "source_quality": 1.0},
             "provenance": {"source_type": "symbolic_algebra", "source_document": "runtime_equation", "source_text": query, "space": "arithmetic", "variable": equation.variable, "solutions": equation.solutions, "solution_trace": equation.steps},
+        })
+    if sequence is not None:
+        seq_dict = sequence.to_dict()
+        seq_numbers_str = ", ".join(_format_number(n) for n in seq_nums) if seq_nums else query
+        results.append({
+            "triple": [seq_numbers_str, "sequence_next", seq_dict["next"]],
+            "confidence": round(sequence.confidence, 4), "score": 1.03,
+            "ranking": {"confidence": round(sequence.confidence, 4), "recency": 1.0, "frequency": 1.0, "source_quality": 1.0},
+            "provenance": {"source_type": "symbolic_sequence", "source_document": "runtime_sequence", "source_text": query, "space": "arithmetic", "pattern_type": seq_dict["type"], "next_value": seq_dict["next"], "formula": seq_dict["formula"], "solution_trace": seq_dict["steps"]},
         })
     if explicit_log_intent and log_missing:
         results.append({

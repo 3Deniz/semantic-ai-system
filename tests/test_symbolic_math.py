@@ -6,6 +6,7 @@ from core.symbolic_math import (
     compute_derivative_advanced,
     compute_algebra,
     solve_equation,
+    detect_sequence_pattern,
 )
 
 
@@ -86,6 +87,73 @@ class TestSymbolicMathAlgebra(unittest.TestCase):
         result = solve_equation("solve x^2 + 1 = 0")
         self.assertIsNotNone(result)
         self.assertEqual(result.solutions, [])
+
+
+class TestSequencePatternDetection(unittest.TestCase):
+    def test_arithmetic_sequence(self):
+        result = detect_sequence_pattern([2, 4, 6, 8, 10])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "arithmetic")
+        self.assertEqual(result.next_value, 12)
+        self.assertGreaterEqual(result.confidence, 0.9)
+
+    def test_geometric_sequence(self):
+        result = detect_sequence_pattern([2, 4, 8, 16, 32])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "geometric")
+        self.assertEqual(result.next_value, 64)
+        self.assertGreaterEqual(result.confidence, 0.9)
+
+    def test_fibonacci_like_sequence(self):
+        result = detect_sequence_pattern([3, 6, 9, 15, 24])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "fibonacci_like")
+        self.assertEqual(result.next_value, 39)
+        self.assertGreaterEqual(result.confidence, 0.85)
+
+    def test_quadratic_sequence(self):
+        result = detect_sequence_pattern([1, 4, 9, 16, 25])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "quadratic")
+        self.assertEqual(result.next_value, 36)
+        self.assertGreaterEqual(result.confidence, 0.8)
+
+    def test_alternating_sequence(self):
+        result = detect_sequence_pattern([1, 10, 2, 9, 3, 8])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "alternating")
+        self.assertEqual(result.next_value, 4)
+        self.assertGreaterEqual(result.confidence, 0.75)
+
+    def test_constant_sequence(self):
+        result = detect_sequence_pattern([7, 7, 7, 7, 7])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "arithmetic")
+        self.assertEqual(result.next_value, 7)
+
+    def test_too_few_numbers(self):
+        result = detect_sequence_pattern([1, 2])
+        self.assertIsNone(result)
+
+    def test_no_pattern(self):
+        result = detect_sequence_pattern([1, 3, 7, 13, 22])
+        self.assertIsNone(result)
+
+    def test_to_dict(self):
+        result = detect_sequence_pattern([2, 4, 6])
+        self.assertIsNotNone(result)
+        d = result.to_dict()
+        self.assertEqual(d["type"], "arithmetic")
+        self.assertEqual(d["next"], "8")
+        self.assertIn("steps", d)
+        self.assertIn("formula", d)
+
+    def test_negative_numbers_arithmetic(self):
+        result = detect_sequence_pattern([-5, -2, 1, 4, 7])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.pattern_type, "arithmetic")
+        self.assertEqual(result.next_value, 10)
+        self.assertEqual(result.to_dict()["next"], "10")
 
 
 if __name__ == "__main__":

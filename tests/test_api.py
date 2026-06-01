@@ -1406,6 +1406,45 @@ class TestAdditionalEndpointCoverage(unittest.TestCase):
         self.assertIn("stage_id", data)
         self.assertIn("progress_percentage", data)
 
+    def test_semantic_search_arithmetic_sequence(self):
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "3, 6, 9, 15, 24, ?", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        self.assertTrue(any(f.get("triple", [None, None])[1] == "sequence_next" for f in data.get("facts", [])))
+        seq_fact = next(f for f in data.get("facts", []) if f.get("triple", [None, None])[1] == "sequence_next")
+        self.assertEqual(seq_fact["triple"][2], "39")
+        prov = seq_fact.get("provenance", {})
+        self.assertEqual(prov.get("pattern_type"), "fibonacci_like")
+
+    def test_semantic_search_geometric_sequence(self):
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "2, 4, 8, 16, ?", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        seq_fact = next(f for f in data.get("facts", []) if f.get("triple", [None, None])[1] == "sequence_next")
+        self.assertEqual(seq_fact["triple"][2], "32")
+        self.assertEqual(seq_fact.get("provenance", {}).get("pattern_type"), "geometric")
+
+    def test_semantic_search_quadratic_sequence(self):
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "1, 4, 9, 16, 25", "limit": 5},
+        ).json()
+        self.assertGreaterEqual(data.get("count", 0), 1)
+        seq_fact = next(f for f in data.get("facts", []) if f.get("triple", [None, None])[1] == "sequence_next")
+        self.assertEqual(seq_fact["triple"][2], "36")
+        self.assertEqual(seq_fact.get("provenance", {}).get("pattern_type"), "quadratic")
+
+    def test_semantic_search_sequence_no_pattern(self):
+        data = self.client.get(
+            "/semantic/search",
+            params={"query": "1, 3, 7, 13, 22, ?", "limit": 5},
+        ).json()
+        self.assertFalse(any(f.get("triple", [None, None])[1] == "sequence_next" for f in data.get("facts", [])))
+
 
 if __name__ == "__main__":
     unittest.main()

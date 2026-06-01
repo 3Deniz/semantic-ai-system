@@ -987,4 +987,244 @@ def solve_equation(query: str) -> EquationResult | None:
 
     return None
 
-    return EquationResult(equation=query, variable=variable, solutions=solutions, steps=steps)
+
+# ============================================================================
+# SEQUENCE PATTERN DETECTION
+# ============================================================================
+
+
+class SequencePattern:
+    """Detected sequence pattern result."""
+
+    def __init__(self, pattern_type: str, next_value: float, confidence: float,
+                 steps: list[str], formula: str):
+        self.pattern_type = pattern_type
+        self.next_value = next_value
+        self.confidence = confidence
+        self.steps = steps
+        self.formula = formula
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.pattern_type,
+            "next": _format_number(self.next_value),
+            "confidence": self.confidence,
+            "steps": self.steps,
+            "formula": self.formula,
+        }
+
+
+def _is_arithmetic_sequence(numbers: list[float]) -> tuple[bool, float | None, list[str]]:
+    """Check if sequence is arithmetic: x_n = x_0 + n*d."""
+    n = len(numbers)
+    if n < 2:
+        return False, None, []
+
+    d = numbers[1] - numbers[0]
+    steps = [f"Check arithmetic progression with difference {_format_number(d)}"]
+
+    for i in range(2, n):
+        expected = numbers[0] + i * d
+        if abs(numbers[i] - expected) > 1e-9:
+            steps.append(f"Failed at position {i+1}: expected {_format_number(expected)}, got {_format_number(numbers[i])}")
+            return False, None, steps
+        steps.append(f"Position {i+1}: {_format_number(numbers[i])} = {_format_number(numbers[0])} + {i}*{_format_number(d)} ✓")
+
+    return True, d, steps
+
+
+def _is_geometric_sequence(numbers: list[float]) -> tuple[bool, float | None, list[str]]:
+    """Check if sequence is geometric: x_n = x_0 * r^n."""
+    n = len(numbers)
+    if n < 2 or numbers[0] == 0:
+        return False, None, []
+
+    r = numbers[1] / numbers[0]
+    steps = [f"Check geometric progression with ratio {_format_number(r)}"]
+
+    for i in range(2, n):
+        expected = numbers[0] * (r ** i)
+        if abs(expected) > 1e-9:
+            if abs(numbers[i] - expected) > 1e-9 * abs(expected):
+                steps.append(f"Failed at position {i+1}: expected {_format_number(expected)}, got {_format_number(numbers[i])}")
+                return False, None, steps
+        elif abs(numbers[i]) > 1e-9:
+            steps.append(f"Failed at position {i+1}: expected {_format_number(expected)}, got {_format_number(numbers[i])}")
+            return False, None, steps
+        steps.append(f"Position {i+1}: {_format_number(numbers[i])} = {_format_number(numbers[0])} * {_format_number(r)}^{i} ✓")
+
+    return True, r, steps
+
+
+def _is_fibonacci_like_sequence(numbers: list[float]) -> tuple[bool, list[str], float | None]:
+    """Check if sequence follows x_n = x_{n-1} + x_{n-2}."""
+    n = len(numbers)
+    if n < 3:
+        return False, [], None
+
+    steps = ["Check Fibonacci-like recurrence: each term = sum of previous two terms"]
+
+    for i in range(2, n):
+        expected = numbers[i-1] + numbers[i-2]
+        if abs(numbers[i] - expected) > 1e-9:
+            steps.append(f"Failed at position {i+1}: {_format_number(numbers[i-2])} + {_format_number(numbers[i-1])} = {_format_number(expected)}, got {_format_number(numbers[i])}")
+            return False, steps, None
+        steps.append(f"Position {i+1}: {_format_number(numbers[i-2])} + {_format_number(numbers[i-1])} = {_format_number(numbers[i])} ✓")
+
+    return True, steps, numbers[-1] + numbers[-2]
+
+
+def _is_quadratic_sequence(numbers: list[float]) -> tuple[bool, list[str], float | None]:
+    """Check if sequence has constant second difference."""
+    n = len(numbers)
+    if n < 3:
+        return False, [], None
+
+    first_diffs = [numbers[i+1] - numbers[i] for i in range(n-1)]
+    second_diffs = [first_diffs[i+1] - first_diffs[i] for i in range(n-2)]
+
+    steps = [
+        f"First differences: {[_format_number(d) for d in first_diffs]}",
+        f"Second differences: {[_format_number(d) for d in second_diffs]}",
+    ]
+
+    if len(set(round(d, 10) for d in second_diffs)) == 1:
+        constant_second = second_diffs[0]
+        next_first_diff = first_diffs[-1] + constant_second
+        next_value = numbers[-1] + next_first_diff
+        steps.append(f"Constant second difference = {_format_number(constant_second)}")
+        steps.append(f"Next first difference = {_format_number(first_diffs[-1])} + {_format_number(constant_second)} = {_format_number(next_first_diff)}")
+        steps.append(f"Next term = {_format_number(numbers[-1])} + {_format_number(next_first_diff)} = {_format_number(next_value)}")
+        return True, steps, next_value
+
+    steps.append("Second differences are not constant")
+    return False, steps, None
+
+
+def _is_alternating_sequence(numbers: list[float]) -> tuple[bool, list[str], float | None]:
+    """Check if sequence alternates between two interleaved sequences."""
+    n = len(numbers)
+    if n < 4:
+        return False, [], None
+
+    # Split into even and odd positions
+    seq_even = [numbers[i] for i in range(0, n, 2)]  # positions 0,2,4,...
+    seq_odd = [numbers[i] for i in range(1, n, 2)]   # positions 1,3,5,...
+
+    steps = [
+        f"Even positions (1st, 3rd, 5th...): {[_format_number(x) for x in seq_even]}",
+        f"Odd positions (2nd, 4th, 6th...): {[_format_number(x) for x in seq_odd]}",
+    ]
+
+    # Check if each subsequence follows a pattern
+    is_arith_even, d_even, _ = _is_arithmetic_sequence(seq_even) if len(seq_even) >= 2 else (False, None, [])
+    is_arith_odd, d_odd, _ = _is_arithmetic_sequence(seq_odd) if len(seq_odd) >= 2 else (False, None, [])
+
+    if is_arith_even and is_arith_odd:
+        next_even = seq_even[-1] + d_even if d_even is not None else seq_even[-1]
+        next_odd = seq_odd[-1] + d_odd if d_odd is not None else seq_odd[-1]
+
+        # Determine which position comes next
+        if n % 2 == 0:
+            # Last was odd position, next is even
+            next_value = next_even
+            steps.append(f"Next term is from even positions: {_format_number(seq_even[-1])} + {_format_number(d_even if d_even is not None else 0)} = {_format_number(next_value)}")
+        else:
+            # Last was even position, next is odd
+            next_value = next_odd
+            steps.append(f"Next term is from odd positions: {_format_number(seq_odd[-1])} + {_format_number(d_odd if d_odd is not None else 0)} = {_format_number(next_value)}")
+
+        return True, steps, next_value
+
+    return False, steps, None
+
+
+def detect_sequence_pattern(numbers: list[float]) -> SequencePattern | None:
+    """
+    Detect pattern in a sequence of numbers.
+
+    Supported patterns (in order of detection):
+    1. Arithmetic progression: 2, 4, 6, 8, 10 -> next = 12
+    2. Geometric progression: 2, 4, 8, 16, 32 -> next = 64
+    3. Fibonacci-like: 3, 6, 9, 15, 24 -> next = 39
+    4. Quadratic (constant second diff): 1, 4, 9, 16, 25 -> next = 36
+    5. Alternating sequences: 1, 10, 2, 9, 3, 8 -> next = 4
+
+    Args:
+        numbers: List of at least 3 numbers
+
+    Returns:
+        SequencePattern object or None if no pattern detected
+    """
+    if len(numbers) < 3:
+        return None
+
+    steps = [f"Analyzing sequence: {', '.join(_format_number(n) for n in numbers)}"]
+
+    # Try arithmetic progression
+    is_arith, d, arith_steps = _is_arithmetic_sequence(numbers)
+    if is_arith and d is not None:
+        steps.extend(arith_steps)
+        next_val = numbers[-1] + d
+        steps.append(f"Next term: {_format_number(numbers[-1])} + {_format_number(d)} = {_format_number(next_val)}")
+        return SequencePattern(
+            pattern_type="arithmetic",
+            next_value=next_val,
+            confidence=0.95,
+            steps=steps,
+            formula=f"x_n = {_format_number(numbers[0])} + (n-1)*{_format_number(d)}",
+        )
+
+    # Try geometric progression
+    is_geo, r, geo_steps = _is_geometric_sequence(numbers)
+    if is_geo and r is not None:
+        steps.extend(geo_steps)
+        next_val = numbers[-1] * r
+        steps.append(f"Next term: {_format_number(numbers[-1])} * {_format_number(r)} = {_format_number(next_val)}")
+        return SequencePattern(
+            pattern_type="geometric",
+            next_value=next_val,
+            confidence=0.95,
+            steps=steps,
+            formula=f"x_n = {_format_number(numbers[0])} * {_format_number(r)}^(n-1)",
+        )
+
+    # Try Fibonacci-like
+    is_fib, fib_steps, fib_next = _is_fibonacci_like_sequence(numbers)
+    if is_fib and fib_next is not None:
+        steps.extend(fib_steps)
+        steps.append(f"Next term: {_format_number(numbers[-2])} + {_format_number(numbers[-1])} = {_format_number(fib_next)}")
+        return SequencePattern(
+            pattern_type="fibonacci_like",
+            next_value=fib_next,
+            confidence=0.90,
+            steps=steps,
+            formula="x_n = x_{n-1} + x_{n-2}",
+        )
+
+    # Try quadratic (constant second difference)
+    is_quad, quad_steps, quad_next = _is_quadratic_sequence(numbers)
+    if is_quad and quad_next is not None:
+        steps.extend(quad_steps)
+        return SequencePattern(
+            pattern_type="quadratic",
+            next_value=quad_next,
+            confidence=0.85,
+            steps=steps,
+            formula="Quadratic progression (constant second difference)",
+        )
+
+    # Try alternating sequences
+    is_alt, alt_steps, alt_next = _is_alternating_sequence(numbers)
+    if is_alt and alt_next is not None:
+        steps.extend(alt_steps)
+        return SequencePattern(
+            pattern_type="alternating",
+            next_value=alt_next,
+            confidence=0.80,
+            steps=steps,
+            formula="Alternating between two arithmetic sequences",
+        )
+
+    steps.append("No known pattern detected")
+    return None
