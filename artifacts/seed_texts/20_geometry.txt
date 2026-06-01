@@ -1,0 +1,17 @@
+# TITLE: Geometry
+# TYPE: knowledge
+# SPACES: geometry, arithmetic, semantic
+
+## DATA
+
+circle_area_radius_5 equals 78.53981633974483
+circle_circumference_radius_5 equals 31.41592653589793
+
+rectangle_area_5_3 equals 15
+rectangle_perimeter_5_3 equals 16
+
+triangle_area_4_3 equals 6
+square_area_4 equals 16
+square_perimeter_4 equals 16
+
+pi equals 3.141592653589793

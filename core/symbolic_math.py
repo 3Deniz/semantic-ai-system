@@ -59,12 +59,19 @@ def _normalize_arithmetic_text(text: str) -> str:
 
     # "9x8" or "9 x 8" as multiplication, but keep symbolic x in calculus terms.
     q = re.sub(r"(?<=\d)\s*x\s*(?=\d)", " * ", q)
-    q = re.sub(r"\s+", " ", q).strip()
-    return q
+    return q.strip()
 
 
 def extract_arithmetic_expression(text: str) -> str | None:
     q = _normalize_arithmetic_text(text)
+
+    # Handle spaceless expressions like "2+3", "44+17", "123+456"
+    # fullmatch ensures compound expressions like "2+3-1" are not split
+    spaceless_match = re.fullmatch(r"(\d+)\s*([+\-])\s*(\d+)", q.strip())
+    if spaceless_match:
+        left, op, right = spaceless_match.groups()
+        return f"{left}{op}{right}"
+
     # Keep only characters useful for arithmetic expression extraction.
     q = re.sub(r"[^0-9+\-*/(). ]", " ", q)
     q = re.sub(r"\s+", " ", q).strip()

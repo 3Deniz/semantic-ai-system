@@ -1,0 +1,36 @@
+# TITLE: Complex Numbers Extended
+# TYPE: knowledge
+# SPACES: complex, arithmetic, semantic
+
+## DATA
+
+# Karmaşık sayı tanımı
+i equals sqrt(-1)
+i^2 equals -1
+i^3 equals -i
+i^4 equals 1
+
+# Karmaşık sayı işlemleri (formüller)
+complex_add(a,b,c,d) equals (a+c) + (b+d)i
+complex_sub(a,b,c,d) equals (a-c) + (b-d)i
+complex_mul(a,b,c,d) equals (ac-bd) + (ad+bc)i
+complex_div(a,b,c,d) equals ((ac+bd)/(c^2+d^2)) + ((bc-ad)/(c^2+d^2))i
+
+# Eşlenik
+complex_conjugate(a+bi) equals a-bi
+
+# Modül ve argüman
+complex_modulus(a+bi) equals sqrt(a^2 + b^2)
+complex_argument(a+bi) equals arctan(b/a)
+
+# Kutupsal form
+polar_form(r,theta) equals r*(cos(theta) + i*sin(theta))
+polar_to_complex(r,theta) equals r*cos(theta) + r*sin(theta)*i
+
+# De Moivre teoremi
+de_moivre(r,theta,n) equals r^n * (cos(n*theta) + i*sin(n*theta))
+
+# Özel değerler
+e^(i*pi) equals -1
+e^(i*pi/2) equals i
+e^(i*pi/4) equals (sqrt(2)/2 + i*sqrt(2)/2)

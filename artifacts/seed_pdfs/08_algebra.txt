@@ -1,0 +1,14 @@
+# TITLE: Algebra
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+x+2=5 equals 3
+2*x=10 equals 5
+x-3=7 equals 10
+x/2=4 equals 8
+x^2=9 equals 3
+x^2-4=0 equals 2
+x^2-5*x+6=0 equals 2
+x^2-5*x+6=0 equals 3

@@ -1,0 +1,31 @@
+# TITLE: Advanced Statistics
+# TYPE: knowledge
+# SPACES: statistics, arithmetic, semantic
+
+## DATA
+
+# Regresyon
+linear_regression_slope(x,y) equals cov(x,y)/var(x)
+linear_regression_intercept(x,y) equals mean(y) - slope*mean(x)
+linear_regression_r_squared(x,y) equals corr(x,y)^2
+pearson_correlation(x,y) equals cov(x,y)/(std_dev(x)*std_dev(y))
+spearman_correlation(x,y) equals pearson_correlation(rank(x), rank(y))
+
+# Hipotez testi
+t_test_one_sample(sample, mu0) equals (mean(sample) - mu0) / (std_dev(sample)/sqrt(n))
+t_test_two_sample(sample1, sample2) equals (mean1 - mean2) / sqrt(var1/n1 + var2/n2)
+chi_square_test(observed, expected) equals Σ((observed-expected)^2/expected)
+p_value_from_z(z) equals 2*(1 - Φ(|z|))
+
+# Güven aralığı
+confidence_interval_mean(sample, confidence_level) equals mean ± z*std_dev/sqrt(n)
+
+# Bayes teoremi
+bayes_posterior(prior, likelihood, evidence) equals (prior * likelihood) / evidence
+
+# ANOVA
+anova_one_way(groups) equals SS_between / SS_within
+
+# Zaman serileri
+moving_average(data, window) equals (Σ data[i-window+1..i]) / window
+exponential_smoothing(data, alpha) equals alpha*data[i] + (1-alpha)*prev_smooth

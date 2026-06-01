@@ -1,0 +1,20 @@
+# TITLE: Logarithms
+# TYPE: knowledge
+# SPACES: calculus, semantic
+
+## DATA
+
+numeracy knows_concept logarithm
+numeracy knows_concept log
+numeracy knows_concept ln
+numeracy knows_concept base
+numeracy knows_concept exponent
+numeracy knows_concept inverse_function
+
+calculus rule log10(1) = 0
+calculus rule log10(10) = 1
+calculus rule log10(100) = 2
+calculus rule log10(1000) = 3
+calculus rule ln(1) = 0
+calculus rule ln(e) = 1
+calculus rule ln(e^2) = 2

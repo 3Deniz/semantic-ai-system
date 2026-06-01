@@ -1,0 +1,29 @@
+# TITLE: Number Theory
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+is_prime_2 equals true
+is_prime_3 equals true
+is_prime_4 equals false
+is_prime_5 equals true
+is_prime_7 equals true
+is_prime_11 equals true
+is_prime_13 equals true
+is_prime_17 equals true
+is_prime_19 equals true
+is_prime_23 equals true
+
+gcd_12_18 equals 6
+lcm_12_18 equals 36
+
+fibonacci_0 equals 0
+fibonacci_1 equals 1
+fibonacci_2 equals 1
+fibonacci_3 equals 2
+fibonacci_4 equals 3
+fibonacci_5 equals 5
+fibonacci_6 equals 8
+fibonacci_7 equals 13
+fibonacci_8 equals 21

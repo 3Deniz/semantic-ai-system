@@ -1,0 +1,10 @@
+# TITLE: Real Numbers
+# TYPE: knowledge
+# SPACES: numeracy, arithmetic, semantic
+
+## DATA
+
+numeracy knows_symbol .
+numeracy knows_concept decimal
+numeracy knows_concept fraction
+numeracy knows_concept real

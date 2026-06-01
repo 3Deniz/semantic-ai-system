@@ -1,0 +1,33 @@
+# TITLE: Quantum Computing
+# TYPE: knowledge
+# SPACES: quantum, linear_algebra, semantic
+
+## DATA
+
+# Qubit tanımı
+qubit_state |ψ⟩ = α|0⟩ + β|1⟩, |α|²+|β|²=1
+bloch_sphere representation of single qubit states
+computational_basis |0⟩ = [1,0]^T, |1⟩ = [0,1]^T
+
+# Kapılar (Gates)
+pauli_x_gate X = [[0,1],[1,0]] (bit flip)
+pauli_y_gate Y = [[0,-i],[i,0]] (bit and phase flip)
+pauli_z_gate Z = [[1,0],[0,-1]] (phase flip)
+hadamard_gate H = (1/√2)[[1,1],[1,-1]] creates superposition
+phase_gate S = [[1,0],[0,i]]
+t_gate T = [[1,0],[0,e^(iπ/4)]]
+
+# Çok qubitli kapılar
+cnot_gate CNOT = [[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]
+swap_gate SWAP = [[1,0,0,0],[0,0,1,0],[0,1,0,0],[0,0,0,1]]
+toffoli_gate CCNOT (controlled-controlled-NOT)
+
+# Önemli algoritmalar
+deutsch_jozsa_algorithm determines if function is constant or balanced
+grover_search finds marked item in O(√N) time
+shor_algorithm factors integers in polynomial time
+quantum_fourier_transform QFT|j⟩ = (1/√N)Σ e^(2πijk/N)|k⟩
+
+# Kuantum durumları
+bell_state (|00⟩+|11⟩)/√2 (maximally entangled)
+ghz_state (|00...0⟩+|11...1⟩)/√2 (Greenberger-Horne-Zeilinger)

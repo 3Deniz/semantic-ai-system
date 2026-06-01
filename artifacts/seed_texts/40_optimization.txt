@@ -1,0 +1,24 @@
+# TITLE: Optimization
+# TYPE: knowledge
+# SPACES: arithmetic, calculus, semantic
+
+## DATA
+
+# Gradient tabanlı yöntemler
+gradient_descent(x0, f, grad_f, lr, epochs) equals x_{k+1} = x_k - lr * ∇f(x_k)
+stochastic_gradient_descent updates using random subset
+adam_optimizer combines momentum and adaptive learning rates
+
+# Convex optimizasyon
+convex_function satisfies f(θx+(1-θ)y) ≤ θf(x)+(1-θ)f(y)
+lagrange_multiplier ∇f(x) = λ∇g(x) for constraint g(x)=0
+kkt_conditions for constrained optimization
+
+# Doğrusal programlama
+simplex_method solves max c^T x subject to Ax ≤ b, x ≥ 0
+dual_problem of linear programming
+
+# Global optimizasyon
+genetic_algorithm uses selection, crossover, mutation
+simulated_annealing uses temperature cooling schedule
+particle_swarm_optimization uses swarm intelligence

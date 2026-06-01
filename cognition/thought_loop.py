@@ -186,7 +186,8 @@ class ThoughtLoop:
 
     def _estimate_jepa_score(self, state: set[str], action: str) -> float:
         try:
-            return float(self.jepa_model.predict_score(self._state_to_vec(state), self._action_idx(action)))
+            score = float(self.jepa_model.predict_score(self._state_to_vec(state), self._action_idx(action)))
+            return max(0.0, min(1.0, score))
         except Exception:
             return 0.0
 

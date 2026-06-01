@@ -1,0 +1,28 @@
+# TITLE: Advanced Number Theory for Cryptography
+# TYPE: knowledge
+# SPACES: number_theory, arithmetic, semantic
+
+## DATA
+
+# Eliptik eğri kriptografisi
+elliptic_curve y² = x³ + ax + b over finite field
+point_addition P+Q on elliptic curve
+point_doubling 2P on elliptic curve
+scalar_multiplication kP = P+P+...+P (k times)
+ecdsa_signing uses elliptic curve discrete logarithm problem
+
+# Lattice tabanlı kriptografi
+lattice discrete set of points in n-dimensional space
+learning_with_errors LWE problem: find s given (a, a·s+e)
+ring_learning_with_errors RLWE uses polynomial rings
+
+# Post-quantum kriptografi
+ntru_encrypt lattice-based encryption scheme
+kyber_key_encapsulation mechanism (NIST standardized)
+dilithium_digital_signature (NIST standardized)
+
+# Hash fonksiyonları (ileri)
+merkle_damgard_construction builds hash from compression function
+sponge_construction (SHA-3) uses permutation function
+collision_resistance hard to find x≠y with H(x)=H(y)
+preimage_resistance hard to find x given H(x)=y

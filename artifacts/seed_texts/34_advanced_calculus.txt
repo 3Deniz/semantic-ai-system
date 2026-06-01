@@ -1,0 +1,53 @@
+# TITLE: Advanced Calculus Runtime Rules
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+# Genel türev kuralları
+d/dx(x^n) equals n*x^(n-1)
+d/dx(c*f(x)) equals c*d/dx(f(x))
+d/dx(f(x)+g(x)) equals d/dx(f(x)) + d/dx(g(x))
+d/dx(f(x)-g(x)) equals d/dx(f(x)) - d/dx(g(x))
+d/dx(f(x)*g(x)) equals f(x)*d/dx(g(x)) + g(x)*d/dx(f(x))
+d/dx(f(x)/g(x)) equals (g(x)*d/dx(f(x)) - f(x)*d/dx(g(x)))/g(x)^2
+d/dx(f(g(x))) equals d/dx(f(g(x))) * d/dx(g(x))
+
+# Genel integral kuralları
+∫x^n dx equals x^(n+1)/(n+1) + C
+∫c*f(x) dx equals c*∫f(x) dx
+∫(f(x)+g(x)) dx equals ∫f(x) dx + ∫g(x) dx
+∫(f(x)-g(x)) dx equals ∫f(x) dx - ∫g(x) dx
+
+# Özel fonksiyon türevleri
+d/dx(sec(x)) equals sec(x)*tan(x)
+d/dx(csc(x)) equals -csc(x)*cot(x)
+d/dx(cot(x)) equals -csc^2(x)
+d/dx(arcsin(x)) equals 1/sqrt(1-x^2)
+d/dx(arccos(x)) equals -1/sqrt(1-x^2)
+d/dx(arctan(x)) equals 1/(1+x^2)
+d/dx(arcsec(x)) equals 1/(|x|*sqrt(x^2-1))
+d/dx(arccsc(x)) equals -1/(|x|*sqrt(x^2-1))
+d/dx(arccot(x)) equals -1/(1+x^2)
+
+# Özel fonksiyon integralleri
+∫sec(x) dx equals ln|sec(x)+tan(x)| + C
+∫csc(x) dx equals -ln|csc(x)+cot(x)| + C
+∫sec^2(x) dx equals tan(x) + C
+∫csc^2(x) dx equals -cot(x) + C
+∫sec(x)*tan(x) dx equals sec(x) + C
+∫csc(x)*cot(x) dx equals -csc(x) + C
+∫1/sqrt(a^2-x^2) dx equals arcsin(x/a) + C
+∫1/(a^2+x^2) dx equals (1/a)*arctan(x/a) + C
+∫1/(x*sqrt(x^2-a^2)) dx equals (1/a)*arcsec(|x|/a) + C
+
+# Limit kuralları
+lim(x->a) c equals c
+lim(x->a) x^n equals a^n
+lim(x->a) (f(x)+g(x)) equals lim(f(x)) + lim(g(x))
+lim(x->a) (f(x)*g(x)) equals lim(f(x)) * lim(g(x))
+lim(x->a) (f(x)/g(x)) equals lim(f(x))/lim(g(x)), g(x)≠0
+lim(x->0) sin(x)/x equals 1
+lim(x->0) (1-cos(x))/x equals 0
+lim(x->0) tan(x)/x equals 1
+lim(x->∞) (1+1/x)^x equals e

@@ -1,0 +1,19 @@
+# TITLE: Numeracy Digits
+# TYPE: knowledge
+# SPACES: numeracy, semantic
+
+## DATA
+
+numeracy knows_digit 0
+numeracy knows_digit 1
+numeracy knows_digit 2
+numeracy knows_digit 3
+numeracy knows_digit 4
+numeracy knows_digit 5
+numeracy knows_digit 6
+numeracy knows_digit 7
+numeracy knows_digit 8
+numeracy knows_digit 9
+
+numeracy knows_concept number
+numeracy knows_concept digit

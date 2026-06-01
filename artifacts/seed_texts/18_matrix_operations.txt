@@ -1,0 +1,13 @@
+# TITLE: Matrix Operations
+# TYPE: knowledge
+# SPACES: linear_algebra, arithmetic, semantic
+
+## DATA
+
+det[[1,2],[3,4]] equals -2
+det[[2,0],[0,2]] equals 4
+det[[1,0],[0,1]] equals 1
+det[[3,1],[2,4]] equals 10
+
+identity_2 equals [[1,0],[0,1]]
+zero_2 equals [[0,0],[0,0]]

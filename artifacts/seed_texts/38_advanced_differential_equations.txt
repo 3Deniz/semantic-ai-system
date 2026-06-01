@@ -1,0 +1,34 @@
+# TITLE: Advanced Differential Equations
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+# Sınır değer problemleri
+shooting_method solves y''=f by converting to initial value problem
+finite_difference_method solves y''=f by discretization
+
+# Kısmi diferansiyel denklemler (PDE)
+heat_equation ∂u/∂t = α * ∂²u/∂x²
+wave_equation ∂²u/∂t² = c² * ∂²u/∂x²
+laplace_equation ∂²u/∂x² + ∂²u/∂y² = 0
+poisson_equation ∂²u/∂x² + ∂²u/∂y² = f(x,y)
+
+# PDE çözüm yöntemleri
+separation_of_variables solves PDE by assuming u(x,t)=X(x)T(t)
+method_of_characteristics solves first-order PDEs
+finite_difference_method_PDE discretizes space and time
+
+# Laplace dönüşümü
+laplace_transform(f(t)) equals ∫₀^∞ e^(-st)*f(t) dt
+laplace_transform(1) equals 1/s
+laplace_transform(t^n) equals n!/s^(n+1)
+laplace_transform(e^(at)) equals 1/(s-a)
+laplace_transform(sin(at)) equals a/(s^2+a^2)
+laplace_transform(cos(at)) equals s/(s^2+a^2)
+inverse_laplace_transform(F(s)) equals (1/(2πi))∫_{c-i∞}^{c+i∞} e^(st)F(s) ds
+
+# Fourier dönüşümü
+fourier_transform(f(t)) equals ∫_{-∞}^∞ f(t)*e^(-iωt) dt
+inverse_fourier_transform(F(ω)) equals (1/(2π))∫_{-∞}^∞ F(ω)*e^(iωt) dω
+fourier_series(f(x),L) equals a0/2 + Σ a_n*cos(nπx/L) + b_n*sin(nπx/L)

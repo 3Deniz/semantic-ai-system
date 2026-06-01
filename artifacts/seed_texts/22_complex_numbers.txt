@@ -1,0 +1,13 @@
+# TITLE: Complex Numbers
+# TYPE: knowledge
+# SPACES: complex, arithmetic, semantic
+
+## DATA
+
+i_equals_sqrt_minus1 equals i
+i_squared equals -1
+i_cubed equals -i
+i_power_4 equals 1
+
+conjugate_3_plus_4i equals 3-4i
+modulus_3_plus_4i equals 5

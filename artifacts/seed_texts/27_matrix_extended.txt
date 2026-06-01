@@ -1,0 +1,34 @@
+# TITLE: Matrix Operations Extended
+# TYPE: knowledge
+# SPACES: linear_algebra, arithmetic, semantic
+
+## DATA
+
+# 2x2 matris çarpımı
+[[1,2],[3,4]] * [[2,0],[1,2]] equals [[4,4],[10,8]]
+[[2,0],[0,2]] * [[1,2],[3,4]] equals [[2,4],[6,8]]
+[[1,0],[0,1]] * [[5,6],[7,8]] equals [[5,6],[7,8]]
+
+# 2x2 matris toplamı
+[[1,2],[3,4]] + [[5,6],[7,8]] equals [[6,8],[10,12]]
+[[2,0],[0,2]] + [[1,2],[3,4]] equals [[3,2],[3,6]]
+
+# 2x2 matris çıkarması
+[[5,6],[7,8]] - [[1,2],[3,4]] equals [[4,4],[4,4]]
+
+# Skaler çarpım
+2 * [[1,2],[3,4]] equals [[2,4],[6,8]]
+3 * [[2,0],[0,2]] equals [[6,0],[0,6]]
+
+# 2x2 ters matris
+inv[[1,2],[3,4]] equals [[-2,1],[1.5,-0.5]]
+inv[[2,0],[0,2]] equals [[0.5,0],[0,0.5]]
+inv[[1,0],[0,1]] equals [[1,0],[0,1]]
+
+# 2x2 determinant (tekrar)
+det[[a,b],[c,d]] equals a*d - b*c
+
+# 3x3 determinant örnekleri
+det[[1,2,3],[4,5,6],[7,8,9]] equals 0
+det[[2,0,0],[0,2,0],[0,0,2]] equals 8
+det[[1,0,0],[0,1,0],[0,0,1]] equals 1

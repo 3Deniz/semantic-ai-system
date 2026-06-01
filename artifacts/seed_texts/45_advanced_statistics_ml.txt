@@ -1,0 +1,33 @@
+# TITLE: Advanced Statistics and Machine Learning
+# TYPE: knowledge
+# SPACES: statistics, arithmetic, semantic
+
+## DATA
+
+# Bayes istatistiği
+bayes_theorem P(A|B) = P(B|A)*P(A)/P(B)
+prior_distribution initial belief before seeing data
+posterior_distribution updated belief after data: P(θ|x) ∝ P(x|θ)P(θ)
+conjugate_prior prior and posterior from same family
+credible_interval Bayesian confidence interval
+
+# Zaman serileri analizi
+autocorrelation_function ρ(k) = Cov(y_t, y_{t+k})/Var(y_t)
+partial_autocorrelation_function correlation after removing intermediate lags
+ar_model y_t = c + φ₁y_{t-1} + ... + φ_p y_{t-p} + ε_t
+ma_model y_t = μ + ε_t + θ₁ε_{t-1} + ... + θ_q ε_{t-q}
+arma_model combines AR and MA models
+arima_model includes differencing: (1-L)^d y_t
+
+# Makine öğrenmesi temelleri
+linear_regression_loss L = (1/n) Σ(y_i - ŷ_i)²
+ridge_regression adds L2 penalty: L = (1/n)Σ(y_i - ŷ_i)² + λΣw_j²
+lasso_regression adds L1 penalty: L = (1/n)Σ(y_i - ŷ_i)² + λΣ|w_j|
+logistic_regression_sigmoid σ(z) = 1/(1+e^{-z})
+cross_entropy_loss L = -[y log(ŷ) + (1-y) log(1-ŷ)]
+knn_classification predicts by majority vote of k nearest neighbors
+kmeans_clustering minimizes within-cluster sum of squares
+
+# Boyut indirgeme
+pca_finds principal components maximizing variance
+svd_factorization X = UΣV^T

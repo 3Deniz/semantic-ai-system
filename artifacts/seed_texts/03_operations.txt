@@ -1,0 +1,17 @@
+# TITLE: Arithmetic Operations
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+numeracy knows_symbol +
+numeracy knows_symbol -
+numeracy knows_symbol *
+numeracy knows_symbol /
+numeracy knows_symbol (
+numeracy knows_symbol )
+
+numeracy knows_concept addition
+numeracy knows_concept subtraction
+numeracy knows_concept multiplication
+numeracy knows_concept division

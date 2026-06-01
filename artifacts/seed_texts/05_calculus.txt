@@ -1,0 +1,27 @@
+# TITLE: Calculus
+# TYPE: knowledge
+# SPACES: calculus, semantic
+
+## DATA
+
+numeracy knows_concept derivative
+numeracy knows_concept integral
+numeracy knows_concept limit
+numeracy knows_concept function
+
+d/dx(x) equals 1
+d/dx(x^2) equals 2*x
+d/dx(x^3) equals 3*x^2
+d/dx(sin(x)) equals cos(x)
+d/dx(cos(x)) equals -sin(x)
+d/dx(e^x) equals e^x
+d/dx(ln(x)) equals 1/x
+
+∫1 dx equals x+C
+∫x dx equals x^2/2+C
+∫x^2 dx equals x^3/3+C
+∫2*x dx equals x^2+C
+∫sin(x) dx equals -cos(x)+C
+∫cos(x) dx equals sin(x)+C
+∫e^x dx equals e^x+C
+∫1/x dx equals ln|x|+C

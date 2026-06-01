@@ -1,0 +1,35 @@
+# TITLE: Place Values
+# TYPE: knowledge
+# SPACES: numeracy, semantic
+
+## DATA
+
+numeracy knows_place_value 10
+numeracy knows_place_value 20
+numeracy knows_place_value 30
+numeracy knows_place_value 40
+numeracy knows_place_value 50
+numeracy knows_place_value 60
+numeracy knows_place_value 70
+numeracy knows_place_value 80
+numeracy knows_place_value 90
+
+numeracy knows_place_value 100
+numeracy knows_place_value 200
+numeracy knows_place_value 300
+numeracy knows_place_value 400
+numeracy knows_place_value 500
+numeracy knows_place_value 600
+numeracy knows_place_value 700
+numeracy knows_place_value 800
+numeracy knows_place_value 900
+
+numeracy knows_place_value 1000
+numeracy knows_place_value 2000
+numeracy knows_place_value 3000
+numeracy knows_place_value 4000
+numeracy knows_place_value 5000
+numeracy knows_place_value 6000
+numeracy knows_place_value 7000
+numeracy knows_place_value 8000
+numeracy knows_place_value 9000

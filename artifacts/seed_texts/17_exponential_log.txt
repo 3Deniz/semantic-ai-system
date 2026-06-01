@@ -1,0 +1,22 @@
+# TITLE: Exponential and Logarithmic Functions
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+e equals 2.718281828459045
+e^0 equals 1
+e^1 equals 2.718281828459045
+e^2 equals 7.38905609893065
+e^-1 equals 0.36787944117144233
+
+ln(1) equals 0
+ln(e) equals 1
+ln(e^2) equals 2
+ln(2) equals 0.6931471805599453
+ln(10) equals 2.302585092994046
+
+log10(1) equals 0
+log10(10) equals 1
+log10(100) equals 2
+log10(1000) equals 3

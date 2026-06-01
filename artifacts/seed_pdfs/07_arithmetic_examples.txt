@@ -1,0 +1,30 @@
+# TITLE: Arithmetic Examples
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+2+3 equals 5
+5+7 equals 12
+10+15 equals 25
+23+45 equals 68
+44+17 equals 61
+99+1 equals 100
+
+10-4 equals 6
+20-8 equals 12
+50-25 equals 25
+100-33 equals 67
+44-17 equals 27
+
+2*3 equals 6
+4*5 equals 20
+6*7 equals 42
+8*9 equals 72
+12*12 equals 144
+
+20/5 equals 4
+36/6 equals 6
+81/9 equals 9
+100/4 equals 25
+144/12 equals 12

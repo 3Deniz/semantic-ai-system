@@ -1,0 +1,17 @@
+# TITLE: Factorial
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+0! equals 1
+1! equals 1
+2! equals 2
+3! equals 6
+4! equals 24
+5! equals 120
+6! equals 720
+7! equals 5040
+8! equals 40320
+9! equals 362880
+10! equals 3628800

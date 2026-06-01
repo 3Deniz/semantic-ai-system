@@ -1,0 +1,95 @@
+# TITLE: Number Theory Extended
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+# Asal sayılar (2-100)
+is_prime(2) equals true
+is_prime(3) equals true
+is_prime(5) equals true
+is_prime(7) equals true
+is_prime(11) equals true
+is_prime(13) equals true
+is_prime(17) equals true
+is_prime(19) equals true
+is_prime(23) equals true
+is_prime(29) equals true
+is_prime(31) equals true
+is_prime(37) equals true
+is_prime(41) equals true
+is_prime(43) equals true
+is_prime(47) equals true
+is_prime(53) equals true
+is_prime(59) equals true
+is_prime(61) equals true
+is_prime(67) equals true
+is_prime(71) equals true
+is_prime(73) equals true
+is_prime(79) equals true
+is_prime(83) equals true
+is_prime(89) equals true
+is_prime(97) equals true
+
+# Asal olmayanlar
+is_prime(1) equals false
+is_prime(4) equals false
+is_prime(6) equals false
+is_prime(8) equals false
+is_prime(9) equals false
+is_prime(10) equals false
+is_prime(12) equals false
+is_prime(14) equals false
+is_prime(15) equals false
+is_prime(16) equals false
+
+# OBEB (GCD) ve OKEK (LCM) formülleri
+gcd(a,b) equals greatest_common_divisor
+lcm(a,b) equals (a*b)/gcd(a,b)
+
+# Modüler aritmetik
+mod_add(a,b,n) equals (a+b) mod n
+mod_sub(a,b,n) equals (a-b) mod n
+mod_mul(a,b,n) equals (a*b) mod n
+mod_pow(a,b,n) equals a^b mod n
+
+# Fibonacci dizisi (0-20)
+fibonacci(0) equals 0
+fibonacci(1) equals 1
+fibonacci(2) equals 1
+fibonacci(3) equals 2
+fibonacci(4) equals 3
+fibonacci(5) equals 5
+fibonacci(6) equals 8
+fibonacci(7) equals 13
+fibonacci(8) equals 21
+fibonacci(9) equals 34
+fibonacci(10) equals 55
+fibonacci(11) equals 89
+fibonacci(12) equals 144
+fibonacci(13) equals 233
+fibonacci(14) equals 377
+fibonacci(15) equals 610
+fibonacci(16) equals 987
+fibonacci(17) equals 1597
+fibonacci(18) equals 2584
+fibonacci(19) equals 4181
+fibonacci(20) equals 6765
+
+# Faktöriyel (genişletilmiş)
+factorial(0) equals 1
+factorial(1) equals 1
+factorial(2) equals 2
+factorial(3) equals 6
+factorial(4) equals 24
+factorial(5) equals 120
+factorial(6) equals 720
+factorial(7) equals 5040
+factorial(8) equals 40320
+factorial(9) equals 362880
+factorial(10) equals 3628800
+factorial(11) equals 39916800
+factorial(12) equals 479001600
+factorial(13) equals 6227020800
+factorial(14) equals 87178291200
+factorial(15) equals 1307674368000

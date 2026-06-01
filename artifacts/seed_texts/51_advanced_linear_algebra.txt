@@ -1,0 +1,34 @@
+# TITLE: Advanced Linear Algebra
+# TYPE: knowledge
+# SPACES: linear_algebra, arithmetic, semantic
+
+## DATA
+
+# Vektör uzayları
+vector_subspace W ⊆ V closed under addition and scalar multiplication
+linear_span set of all linear combinations of vectors
+basis linearly independent spanning set
+dimension number of vectors in basis
+direct_sum V = U ⊕ W every v = u + w uniquely
+
+# Lineer dönüşümler
+linear_transformation T(u+v)=T(u)+T(v), T(cv)=cT(v)
+kernel ker(T) = {v: T(v)=0}
+image im(T) = {T(v): v∈V}
+rank_nullity_theorem dim(ker(T)) + dim(im(T)) = dim(V)
+
+# Jordan formu
+jordan_block J_n(λ) = λI + N where N is nilpotent
+jordan_canonical_form block diagonal matrix of Jordan blocks
+minimal_polynomial smallest polynomial that annihilates T
+
+# Tensörler
+tensor_product V⊗W space of bilinear maps
+covariant_tensor transforms with basis change
+contravariant_tensor transforms inversely
+metric_tensor g_{ij} for measuring lengths and angles
+
+# Lie cebirleri
+lie_algebra vector space with Lie bracket [·,·]
+jacobi_identity [x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0
+special_linear_lie_algebra sl(n) matrices with trace zero

@@ -1,0 +1,22 @@
+# TITLE: Advanced Numerical Analysis
+# TYPE: knowledge
+# SPACES: numerical_analysis, calculus, arithmetic, semantic
+
+## DATA
+
+# Runge-Kutta yöntemleri (2. ve 4. derece detaylı)
+rk2_method(f,x0,y0,h) equals k1 = h*f(x0,y0), k2 = h*f(x0+h, y0+k1), y = y0 + (k1+k2)/2
+rk4_method(f,x0,y0,h) equals k1 = h*f(x0,y0), k2 = h*f(x0+h/2, y0+k1/2), k3 = h*f(x0+h/2, y0+k2/2), k4 = h*f(x0+h, y0+k3), y = y0 + (k1+2*k2+2*k3+k4)/6
+
+# Çok adımlı yöntemler
+adams_bashforth_2(y_n, y_{n-1}, f_n, f_{n-1}, h) equals y_{n+1} = y_n + h*(3*f_n - f_{n-1})/2
+adams_moulton_2(y_n, f_n, f_{n+1}, h) equals y_{n+1} = y_n + h*(f_n + f_{n+1})/2
+
+# Sınır değer problemleri çözümü
+shooting_method_linear(y'', p(x), q(x), r(x), y(a), y(b)) converts to initial value problem
+finite_difference_2nd_order(y'', y', y, a, b, n) discretizes with step size h = (b-a)/n
+
+# Kısmi diferansiyel denklemler (PDE) sayısal çözümleri
+finite_difference_heat_equation(u_t = α*u_xx, dx, dt) uses forward time, central space
+crank_nicolson_method(u_t = α*u_xx, dx, dt) is unconditionally stable
+finite_difference_wave_equation(u_tt = c²*u_xx, dx, dt) uses central time and space

@@ -1,0 +1,87 @@
+# TITLE: Trigonometry Extended
+# TYPE: knowledge
+# SPACES: arithmetic, trigonometry, semantic
+
+## DATA
+
+# Sinüs değerleri (0-360)
+sin(0) equals 0
+sin(15) equals 0.25881904510252074
+sin(30) equals 0.5
+sin(45) equals 0.7071067811865475
+sin(60) equals 0.8660254037844386
+sin(75) equals 0.9659258262890683
+sin(90) equals 1
+sin(105) equals 0.9659258262890683
+sin(120) equals 0.8660254037844386
+sin(135) equals 0.7071067811865475
+sin(150) equals 0.5
+sin(165) equals 0.25881904510252074
+sin(180) equals 0
+sin(195) equals -0.25881904510252074
+sin(210) equals -0.5
+sin(225) equals -0.7071067811865475
+sin(240) equals -0.8660254037844386
+sin(255) equals -0.9659258262890683
+sin(270) equals -1
+sin(285) equals -0.9659258262890683
+sin(300) equals -0.8660254037844386
+sin(315) equals -0.7071067811865475
+sin(330) equals -0.5
+sin(345) equals -0.25881904510252074
+sin(360) equals 0
+
+# Kosinüs değerleri
+cos(0) equals 1
+cos(15) equals 0.9659258262890683
+cos(30) equals 0.8660254037844386
+cos(45) equals 0.7071067811865475
+cos(60) equals 0.5
+cos(75) equals 0.25881904510252074
+cos(90) equals 0
+cos(105) equals -0.25881904510252074
+cos(120) equals -0.5
+cos(135) equals -0.7071067811865475
+cos(150) equals -0.8660254037844386
+cos(165) equals -0.9659258262890683
+cos(180) equals -1
+cos(195) equals -0.9659258262890683
+cos(210) equals -0.8660254037844386
+cos(225) equals -0.7071067811865475
+cos(240) equals -0.5
+cos(255) equals -0.25881904510252074
+cos(270) equals 0
+cos(285) equals 0.25881904510252074
+cos(300) equals 0.5
+cos(315) equals 0.7071067811865475
+cos(330) equals 0.8660254037844386
+cos(345) equals 0.9659258262890683
+cos(360) equals 1
+
+# Tanjant değerleri
+tan(0) equals 0
+tan(30) equals 0.5773502691896257
+tan(45) equals 1
+tan(60) equals 1.7320508075688767
+tan(90) equals undefined
+tan(180) equals 0
+tan(270) equals undefined
+tan(360) equals 0
+
+# Ters trigonometrik fonksiyonlar
+arcsin(0) equals 0
+arcsin(0.5) equals 30
+arcsin(1) equals 90
+arccos(0) equals 90
+arccos(0.5) equals 60
+arccos(1) equals 0
+arctan(0) equals 0
+arctan(1) equals 45
+
+# Hiperbolik fonksiyonlar
+sinh(0) equals 0
+sinh(1) equals 1.1752011936438014
+cosh(0) equals 1
+cosh(1) equals 1.5430806348152437
+tanh(0) equals 0
+tanh(1) equals 0.7615941559557649

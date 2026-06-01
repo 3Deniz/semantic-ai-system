@@ -1,0 +1,28 @@
+# TITLE: Numerical Analysis
+# TYPE: knowledge
+# SPACES: arithmetic, calculus, semantic
+
+## DATA
+
+# Kök bulma yöntemleri
+bisection_method(f,a,b,tol) finds root where f(a)*f(b) < 0
+newton_raphson_method(f,df,x0,tol) equals x_{n+1} = x_n - f(x_n)/df(x_n)
+secant_method(f,x0,x1,tol) equals x_{n+1} = x_n - f(x_n)*(x_n - x_{n-1})/(f(x_n)-f(x_{n-1}))
+
+# Sayısal integral (Quadrature)
+trapezoidal_rule(f,a,b,n) equals (b-a)/(2n) * Σ(f(x_i)+f(x_{i+1}))
+simpson_rule(f,a,b,n) equals (b-a)/(3n) * Σ(f(x_i)+4f(x_{i+1})+f(x_{i+2}))
+midpoint_rule(f,a,b,n) equals (b-a)/n * Σ(f((x_i+x_{i+1})/2))
+
+# Sayısal türev
+finite_difference_forward(f,x,h) equals (f(x+h)-f(x))/h
+finite_difference_backward(f,x,h) equals (f(x)-f(x-h))/h
+finite_difference_central(f,x,h) equals (f(x+h)-f(x-h))/(2h)
+
+# Diferansiyel denklem sayısal çözümleri
+euler_method_step(x,y,h,dy_dx) equals y + h*dy_dx(x,y)
+runge_kutta_4_step(x,y,h,dy_dx) equals y + (k1+2k2+2k3+k4)/6 where k1=h*dy_dx(x,y), k2=h*dy_dx(x+h/2,y+k1/2), k3=h*dy_dx(x+h/2,y+k2/2), k4=h*dy_dx(x+h,y+k3)
+
+# Interpolasyon
+linear_interpolation(x0,y0,x1,y1,x) equals y0 + (y1-y0)*(x-x0)/(x1-x0)
+lagrange_interpolation(points,x) equals Σ y_i * Π (x-x_j)/(x_i-x_j)

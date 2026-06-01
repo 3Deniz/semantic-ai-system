@@ -1,0 +1,32 @@
+# TITLE: Literacy Letters
+# TYPE: knowledge
+# SPACES: literacy, semantic
+
+## DATA
+
+numeracy knows_letter a
+numeracy knows_letter b
+numeracy knows_letter c
+numeracy knows_letter d
+numeracy knows_letter e
+numeracy knows_letter f
+numeracy knows_letter g
+numeracy knows_letter h
+numeracy knows_letter i
+numeracy knows_letter j
+numeracy knows_letter k
+numeracy knows_letter l
+numeracy knows_letter m
+numeracy knows_letter n
+numeracy knows_letter o
+numeracy knows_letter p
+numeracy knows_letter q
+numeracy knows_letter r
+numeracy knows_letter s
+numeracy knows_letter t
+numeracy knows_letter u
+numeracy knows_letter v
+numeracy knows_letter w
+numeracy knows_letter x
+numeracy knows_letter y
+numeracy knows_letter z

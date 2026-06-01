@@ -1,0 +1,60 @@
+# TITLE: Roots and Radicals
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+# Karekökler (1-100)
+sqrt(1) equals 1
+sqrt(2) equals 1.4142135623730951
+sqrt(3) equals 1.7320508075688772
+sqrt(4) equals 2
+sqrt(5) equals 2.23606797749979
+sqrt(6) equals 2.449489742783178
+sqrt(7) equals 2.6457513110645907
+sqrt(8) equals 2.8284271247461903
+sqrt(9) equals 3
+sqrt(10) equals 3.1622776601683795
+sqrt(11) equals 3.3166247903554
+sqrt(12) equals 3.4641016151377544
+sqrt(13) equals 3.605551275463989
+sqrt(14) equals 3.7416573867739413
+sqrt(15) equals 3.872983346207417
+sqrt(16) equals 4
+sqrt(17) equals 4.123105625617661
+sqrt(18) equals 4.242640687119285
+sqrt(19) equals 4.358898943540674
+sqrt(20) equals 4.47213595499958
+sqrt(25) equals 5
+sqrt(36) equals 6
+sqrt(49) equals 7
+sqrt(64) equals 8
+sqrt(81) equals 9
+sqrt(100) equals 10
+
+# Küpkökler
+cbrt(1) equals 1
+cbrt(8) equals 2
+cbrt(27) equals 3
+cbrt(64) equals 4
+cbrt(125) equals 5
+cbrt(216) equals 6
+cbrt(343) equals 7
+cbrt(512) equals 8
+cbrt(729) equals 9
+cbrt(1000) equals 10
+
+# Dördüncü derece kök
+fourth_root(1) equals 1
+fourth_root(16) equals 2
+fourth_root(81) equals 3
+fourth_root(256) equals 4
+fourth_root(625) equals 5
+fourth_root(1296) equals 6
+fourth_root(2401) equals 7
+fourth_root(4096) equals 8
+fourth_root(6561) equals 9
+fourth_root(10000) equals 10
+
+# n'inci kök formülü
+nth_root(a,n) equals a^(1/n)

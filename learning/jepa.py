@@ -139,11 +139,13 @@ class JEPAModel:
 
         The predicted next-state latent is compared to the safe (zero-risk) latent.
         Proximity to the safe latent → positive score.
+        Returns a value in [0, 1] via sigmoid normalization.
         """
         ctx        = self._encode_ctx(state_vec, action_idx)
         pred       = self._predict(ctx)
         dist       = float(np.linalg.norm(pred - self._safe_latent))
-        return -dist   # less distance from safe state → higher score
+        normalized = 2.0 / (1.0 + np.exp(dist)) - 1.0
+        return (normalized + 1.0) / 2.0
 
     @property
     def is_trained(self) -> bool:

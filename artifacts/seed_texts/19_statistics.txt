@@ -1,0 +1,17 @@
+# TITLE: Statistics
+# TYPE: knowledge
+# SPACES: statistics, arithmetic, semantic
+
+## DATA
+
+mean_1_2_3_4_5 equals 3
+median_1_2_3_4_5 equals 3
+variance_1_2_3_4_5 equals 2.5
+std_dev_1_2_3_4_5 equals 1.5811388300841898
+
+probability_coin_heads equals 0.5
+probability_dice_6 equals 0.16666666666666666
+
+nCr_5_2 equals 10
+nPr_5_2 equals 20
+factorial_5 equals 120

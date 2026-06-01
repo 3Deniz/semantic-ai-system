@@ -1,0 +1,34 @@
+# TITLE: Cryptography and Number Theory
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+# Modüler aritmetik işlemleri
+mod_add(a,b,n) equals (a + b) mod n
+mod_sub(a,b,n) equals (a - b) mod n
+mod_mul(a,b,n) equals (a * b) mod n
+mod_pow(a,b,n) equals a^b mod n
+mod_inverse(a,n) exists if gcd(a,n)=1
+extended_gcd(a,b) returns (g,x,y) where ax+by=g
+chinese_remainder_theorem solves x ≡ a_i (mod n_i)
+
+# Asallık testleri
+fermat_test(n,a) returns true if a^(n-1) ≡ 1 (mod n)
+miller_rabin_test(n,a) writes n-1 = 2^s*d, checks a^d ≡ 1 or a^(2^r*d) ≡ -1
+deterministic_prime_test for n < 3,474,749,660,383
+
+# RSA kriptografisi
+rsa_keygen(p,q) computes n=p*q, φ(n)=(p-1)(q-1), e coprime to φ(n), d=e^(-1) mod φ(n)
+rsa_encrypt(m,e,n) equals m^e mod n
+rsa_decrypt(c,d,n) equals c^d mod n
+digital_signature(m,d,n) equals m^d mod n
+
+# ElGamal kriptografisi
+elgamal_keygen(p,g) selects private key x, public key y=g^x mod p
+elgamal_encrypt(m,y,p,g,k) returns (g^k mod p, m*y^k mod p)
+elgamal_decrypt(c1,c2,x,p) returns c2 * (c1^x)^(-1) mod p
+
+# Hash fonksiyonları
+sha256(input) produces 256-bit hash
+md5(input) produces 128-bit hash (broken)

@@ -1,0 +1,28 @@
+# TITLE: Advanced Topology
+# TYPE: knowledge
+# SPACES: topology, semantic
+
+## DATA
+
+# Homotopi
+homotopy continuous deformation between functions
+fundamental_group π₁(X,x₀) group of loops up to homotopy
+simply_connected space with trivial fundamental group
+covering_space space that locally looks like product with discrete set
+
+# Homoloji
+simplicial_complex built from vertices, edges, triangles, tetrahedra
+chain_group C_k formal sums of k-simplices
+boundary_map ∂ maps k-simplices to (k-1)-simplices
+homology_group H_k = ker(∂_k)/im(∂_{k+1})
+betti_number rank of homology group
+
+# Cohomoloji
+cochain_group C^k dual to chain groups
+coboundary_map δ dual to boundary map
+cohomology_group H^k = ker(δ_k)/im(δ_{k-1})
+
+# Kategori teorisi
+category objects and morphisms between them
+functor maps between categories
+natural_transformation maps between functors

@@ -313,9 +313,23 @@ class SemanticParser:
     # ------------------------------------------------------------------
 
     def _parse_free(self, text: str, confidence: float) -> Optional[list[dict]]:
-        # Detect and strip negation
-        negation  = bool(re.search(r"\bnot\b|\bno\b", text, re.I))
-        text_clean = re.sub(r"\b(not|no)\b", "", text, flags=re.I)
+        # Detect and strip negation — covers 15+ negation patterns
+        negation_patterns = [
+            r"\bnot\b", r"\bno\b", r"\bnever\b", r"\bcannot\b", r"\bcan't\b",
+            r"\bdoes not\b", r"\bdoesn't\b", r"\bdo not\b", r"\bdon't\b",
+            r"\bwill not\b", r"\bwon't\b", r"\bis not\b", r"\bisn't\b",
+            r"\bare not\b", r"\baren't\b", r"\bwithout\b", r"\blacks\b",
+            r"\babsent\b", r"\bmissing\b",
+        ]
+        negation = False
+        text_clean = text
+        for pattern in negation_patterns:
+            if re.search(pattern, text, re.I):
+                negation = True
+                text_clean = re.sub(pattern, "", text_clean, flags=re.I)
+        # Remove auxiliary verbs that may remain after negation stripping
+        aux_verbs = r"\b(does|do|did|can|could|will|would|should|may|might|have|has|had)\b"
+        text_clean = re.sub(aux_verbs, "", text_clean, flags=re.I)
 
         # Lowercase + remove articles (but keep relation verbs intact for lookup)
         lower = re.sub(r"\b(a|an|the)\b", "", text_clean.lower())

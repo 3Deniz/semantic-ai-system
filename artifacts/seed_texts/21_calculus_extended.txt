@@ -1,0 +1,18 @@
+# TITLE: Calculus Extended
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+d/dx(sin(x)) equals cos(x)
+d/dx(cos(x)) equals -sin(x)
+d/dx(tan(x)) equals sec^2(x)
+d/dx(ln(x)) equals 1/x
+d/dx(e^x) equals e^x
+
+∫sin(x) dx equals -cos(x)+C
+∫cos(x) dx equals sin(x)+C
+∫e^x dx equals e^x+C
+∫1/x dx equals ln|x|+C
+
+limit_x_0_sinx_over_x equals 1

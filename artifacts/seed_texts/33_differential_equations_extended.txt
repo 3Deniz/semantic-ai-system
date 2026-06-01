@@ -1,0 +1,26 @@
+# TITLE: Differential Equations Extended
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+# Birinci derece diferansiyel denklemler
+solve(dy/dx = k) -> y = k*x + C
+solve(dy/dx = k*y) -> y = C*e^(k*x)
+solve(dy/dx = x^n) -> y = x^(n+1)/(n+1) + C
+solve(dy/dx = sin(x)) -> y = -cos(x) + C
+solve(dy/dx = cos(x)) -> y = sin(x) + C
+solve(dy/dx = e^x) -> y = e^x + C
+
+# İkinci derece diferansiyel denklemler
+solve(d^2y/dx^2 = 0) -> y = A*x + B
+solve(d^2y/dx^2 = k) -> y = (k/2)*x^2 + A*x + B
+solve(d^2y/dx^2 = -k^2*y) -> y = A*sin(k*x) + B*cos(k*x)
+solve(d^2y/dx^2 = k^2*y) -> y = A*e^(k*x) + B*e^(-k*x)
+
+# Homojen olmayan denklemler
+solve(dy/dx + P(x)*y = Q(x)) -> y = (∫Q(x)*e^(∫P(x)dx)dx + C) * e^(-∫P(x)dx)
+
+# Sayısal çözüm yöntemleri
+euler_method(f,x0,y0,h,n) -> y_{n+1} = y_n + h*f(x_n,y_n)
+runge_kutta_4(f,x0,y0,h) -> y_{n+1} = y_n + (k1+2k2+2k3+k4)/6

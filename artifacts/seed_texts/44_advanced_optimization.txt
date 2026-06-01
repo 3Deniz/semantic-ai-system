@@ -1,0 +1,28 @@
+# TITLE: Advanced Optimization
+# TYPE: knowledge
+# SPACES: optimization, arithmetic, semantic
+
+## DATA
+
+# Kısıtlı optimizasyon
+interior_point_method solves constrained convex optimization
+barrier_method replaces constraints with logarithmic barrier
+penalty_method adds penalty term for constraint violation
+augmented_lagrangian combines Lagrange multiplier and penalty
+
+# Konveks optimizasyon
+convex_set contains line segment between any two points
+convex_function_definition f(θx+(1-θ)y) ≤ θf(x)+(1-θ)f(y)
+strong_convexity f(y) ≥ f(x) + ∇f(x)^T(y-x) + (μ/2)‖y-x‖²
+lipschitz_gradient ‖∇f(x)-∇f(y)‖ ≤ L‖x-y‖
+
+# Global optimizasyon
+genetic_algorithm_selection selects best individuals
+genetic_algorithm_crossover combines two parents
+genetic_algorithm_mutation randomly changes genes
+simulated_annealing_acceptance accepts worse solution with probability e^(-ΔE/T)
+particle_swarm_update updates velocity and position using personal and global best
+
+# Doğrusal programlama dualitesi
+dual_problem_linear primal: min c^Tx, dual: max b^Ty subject to A^Ty ≤ c
+complementary_slackness x_i * (A^Ty - c)_i = 0 for all i

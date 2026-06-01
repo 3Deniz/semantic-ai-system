@@ -1,0 +1,12 @@
+# TITLE: Differential Equations
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+solve_dydx_equals_k_y -> y_equals_C_e_pow_kx
+solve_dydx_equals_k -> y_equals_kx_plus_C
+solve_dydx_equals_x^2 -> y_equals_x^3_over_3_plus_C
+
+solve_d2ydx2_equals_minus_k^2_y -> y_equals_A_sin_kx_plus_B_cos_kx
+solve_d2ydx2_equals_k^2_y -> y_equals_A_e_pow_kx_plus_B_e_pow_minus_kx

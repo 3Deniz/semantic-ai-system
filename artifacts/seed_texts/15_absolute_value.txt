@@ -1,0 +1,15 @@
+# TITLE: Absolute Value
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+|5| equals 5
+|-5| equals 5
+|0| equals 0
+|3.5| equals 3.5
+|-3.5| equals 3.5
+|100| equals 100
+|-100| equals 100
+|999999| equals 999999
+|-999999| equals 999999

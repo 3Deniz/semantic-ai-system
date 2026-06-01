@@ -1,0 +1,42 @@
+# TITLE: Graph Theory
+# TYPE: knowledge
+# SPACES: graph_theory, arithmetic, semantic
+
+## DATA
+
+# Temel tanımlar
+graph G = (V,E) vertices and edges
+directed_graph edges have direction
+undirected_graph edges have no direction
+weighted_graph edges have weights
+simple_graph no loops or multiple edges
+complete_graph K_n every vertex connected to all others
+bipartite_graph vertices partitionable into two independent sets
+
+# Yollar ve döngüler
+path sequence of vertices with edges between consecutive vertices
+cycle path that starts and ends at same vertex
+hamiltonian_cycle visits each vertex exactly once
+eulerian_cycle visits each edge exactly once
+
+# Graf parametreleri
+degree(v) number of edges incident to vertex v
+graph_diameter longest shortest path between any two vertices
+graph_girth length of shortest cycle
+chromatic_number minimum colors needed to color vertices
+
+# Ağaçlar
+tree connected graph with no cycles
+spanning_tree tree containing all vertices
+minimum_spanning_tree spanning tree with minimum total weight
+kruskal_algorithm finds MST by adding smallest edges without cycles
+prim_algorithm grows MST from starting vertex
+
+# En kısa yol algoritmaları
+dijkstra_algorithm finds shortest path in weighted graph with non-negative weights
+bellman_ford_algorithm handles negative weights
+floyd_warshall_algorithm finds shortest paths between all pairs
+
+# Ağ akışı
+max_flow_min_cut maximum flow equals minimum cut capacity
+ford_fulkerson_algorithm finds maximum flow using augmenting paths

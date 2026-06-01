@@ -53,6 +53,34 @@ def _coerce_state(value: Any) -> set[str]:
     return {str(value).lower()}
 
 
+class IndexedKnowledgeGraph:
+    """Wrapper for KG with precomputed adjacency indexes for O(1) neighbor lookups."""
+
+    __slots__ = ("kg", "_outgoing", "_incoming")
+
+    def __init__(self, kg):
+        self.kg = kg
+        self._outgoing: dict[str, list[tuple[str, str, float, dict]]] = {}
+        self._incoming: dict[str, list[tuple[str, str, float, dict]]] = {}
+
+        for s, r, o, c in getattr(kg, "triples", []):
+            s_str, o_str = str(s).lower(), str(o).lower()
+            if s_str not in self._outgoing:
+                self._outgoing[s_str] = []
+            self._outgoing[s_str].append((str(r).lower(), o_str, float(c),
+                kg.get_metadata(s, r, o) if hasattr(kg, "get_metadata") else {}))
+            if o_str not in self._incoming:
+                self._incoming[o_str] = []
+            self._incoming[o_str].append((str(r).lower(), s_str, float(c),
+                kg.get_metadata(s, r, o) if hasattr(kg, "get_metadata") else {}))
+
+    def get_outgoing(self, entity: str) -> list:
+        return self._outgoing.get(entity, [])
+
+    def get_incoming(self, entity: str) -> list:
+        return self._incoming.get(entity, [])
+
+
 class SpaceRelationsBuilder:
     def __init__(self, kg=None, tms=None, thought_loop=None):
         self.kg = kg
@@ -139,9 +167,10 @@ class SpaceRelationsBuilder:
         }
 
     def _add_semantic_edges(self, anchors: set[str], max_depth: int, add_node, add_edge):
-        triples = list(getattr(self.kg, "triples", [])) if self.kg is not None else []
-        if not triples:
+        if self.kg is None:
             return
+
+        indexed_kg = IndexedKnowledgeGraph(self.kg)
 
         belief_status: dict[tuple[str, str, str], str] = {}
         if self.tms is not None:
@@ -156,39 +185,55 @@ class SpaceRelationsBuilder:
 
         while depth < max_depth and frontier:
             next_frontier = set()
-            for s, r, o, c in triples:
-                s_s = str(s).lower()
-                o_s = str(o).lower()
-                if s_s not in frontier and o_s not in frontier:
-                    continue
+            for entity in frontier:
+                for rel, target, conf, prov in indexed_kg.get_outgoing(entity):
+                    add_node(f"entity:{entity}", "entity", entity)
+                    add_node(f"entity:{target}", "entity", target)
 
-                add_node(f"entity:{s_s}", "entity", s_s)
-                add_node(f"entity:{o_s}", "entity", o_s)
+                    review_status = belief_status.get((entity, rel, target))
+                    if review_status:
+                        prov = dict(prov)
+                        prov.setdefault("review_status", review_status)
 
-                provenance = {}
-                if self.kg is not None and hasattr(self.kg, "get_metadata"):
-                    provenance = dict(self.kg.get_metadata(s, r, o) or {})
-                review_status = belief_status.get((str(s), str(r), str(o)))
-                if review_status:
-                    provenance.setdefault("review_status", review_status)
+                    add_edge({
+                        "source": f"entity:{entity}",
+                        "target": f"entity:{target}",
+                        "space": "semantic",
+                        "source_space": "semantic",
+                        "target_space": "semantic",
+                        "relation_type": str(rel),
+                        "confidence": _clamp_conf(float(conf)),
+                        "provenance": prov,
+                    })
 
-                add_edge({
-                    "source": f"entity:{s_s}",
-                    "target": f"entity:{o_s}",
-                    "space": "semantic",
-                    "source_space": "semantic",
-                    "target_space": "semantic",
-                    "relation_type": str(r),
-                    "confidence": _clamp_conf(float(c)),
-                    "provenance": provenance,
-                })
+                    if target not in visited_entities:
+                        next_frontier.add(target)
+                        visited_entities.add(target)
 
-                if s_s not in visited_entities:
-                    next_frontier.add(s_s)
-                if o_s not in visited_entities:
-                    next_frontier.add(o_s)
+                for rel, source, conf, prov in indexed_kg.get_incoming(entity):
+                    add_node(f"entity:{source}", "entity", source)
+                    add_node(f"entity:{entity}", "entity", entity)
 
-            visited_entities.update(next_frontier)
+                    review_status = belief_status.get((source, rel, entity))
+                    if review_status:
+                        prov = dict(prov)
+                        prov.setdefault("review_status", review_status)
+
+                    add_edge({
+                        "source": f"entity:{source}",
+                        "target": f"entity:{entity}",
+                        "space": "semantic",
+                        "source_space": "semantic",
+                        "target_space": "semantic",
+                        "relation_type": str(rel),
+                        "confidence": _clamp_conf(float(conf)),
+                        "provenance": prov,
+                    })
+
+                    if source not in visited_entities:
+                        next_frontier.add(source)
+                        visited_entities.add(source)
+
             frontier = next_frontier
             depth += 1
 
@@ -274,8 +319,24 @@ class SpaceRelationsBuilder:
                     "provenance": {},
                 })
 
+    def _get_threats_from_kg(self) -> set[str]:
+        """Infer threats dynamically from Knowledge Graph, with fallback."""
+        threats: set[str] = set()
+        kg = self.kg
+        if kg is None:
+            return {"crisis", "collapse", "damage", "flood", "rain"}
+        for s, r, o, _c in kg.triples:
+            if r == "is" and str(o).lower() in ("risk", "danger", "high_risk"):
+                threats.add(str(s).lower())
+        threat_relations = {"causes", "leads_to", "increases", "prevents"}
+        for s, r, o, _c in kg.triples:
+            if r in threat_relations:
+                threats.add(str(s).lower())
+                threats.add(str(o).lower())
+        return threats or {"crisis", "collapse", "damage", "flood", "rain"}
+
     def _add_risk_edges(self, anchor_tokens: set[str], add_node, add_edge):
-        threats = ("rain", "flood", "damage", "collapse", "crisis")
+        threats = self._get_threats_from_kg()
         for token in sorted(anchor_tokens):
             add_node(f"state:{token}", "state", token)
             if token in threats:

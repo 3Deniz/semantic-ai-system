@@ -119,12 +119,11 @@ class LiteTMS:
         for belief in self.beliefs:
             s, r, o = belief["triple"]
 
-            if s == s_new and o == o_new:
-                if r == opposite:
-                    if new_conf > belief["confidence"]:
-                        belief["valid"] = False
-                    else:
-                        return False
+            if s == s_new and o == o_new and r == opposite:
+                if new_conf > belief["confidence"]:
+                    belief["valid"] = False
+                    return True
+                return False
 
         return True
 

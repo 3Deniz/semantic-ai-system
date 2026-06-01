@@ -137,35 +137,44 @@ type ThoughtStep = {
 };
 
 // ── Visual stepper for the thought pipeline ──────────────────────────────────
-const STAGE_STYLES: Record<string, { dot: string; label: string; line: string }> = {
-  Perception: { dot: "bg-cyan-500",   label: "text-cyan-300",   line: "border-cyan-800" },
-  Memory:     { dot: "bg-purple-500", label: "text-purple-300", line: "border-purple-800" },
-  Intent:     { dot: "bg-green-500",  label: "text-green-300",  line: "border-green-800" },
-  Conflict:   { dot: "bg-yellow-500", label: "text-yellow-300", line: "border-yellow-800" },
-  Simulation: { dot: "bg-pink-500",   label: "text-pink-300",   line: "border-pink-800" },
-  Decision:   { dot: "bg-emerald-500",label: "text-emerald-300",line: "border-emerald-800" },
-};
-const DEFAULT_STAGE = { dot: "bg-slate-500", label: "text-slate-300", line: "border-slate-700" };
 const CURRICULUM_PHASE_ORDER = ["letters", "digits", "operations", "real_numbers", "calculus", "logarithms"];
+
+function getStageStyle(_stageName: string, index: number) {
+  const goldenRatio = 0.618033988749895;
+  const hue = (index * 360 * goldenRatio) % 360;
+  return {
+    dot: `hsl(${hue}, 70%, 55%)`,
+    label: `hsl(${hue}, 70%, 75%)`,
+    line: `hsl(${hue}, 40%, 30%)`,
+  };
+}
 
 function ThoughtStepper({ steps }: { steps: ThoughtStep[] }) {
   return (
     <ol className="relative ml-2">
       {steps.map((step, i) => {
-        const s = STAGE_STYLES[step.stage] ?? DEFAULT_STAGE;
+        const style = getStageStyle(step.stage, i);
         const isLast = i === steps.length - 1;
         return (
           <li key={i} className="flex gap-3">
-            {/* Left rail */}
             <div className="flex flex-col items-center">
-              <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${s.dot}`}>
+              <span
+                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                style={{ backgroundColor: style.dot }}
+              >
                 {i + 1}
               </span>
-              {!isLast && <span className={`mt-1 mb-1 w-px grow border-l-2 border-dashed ${s.line}`} />}
+              {!isLast && (
+                <span
+                  className="mt-1 mb-1 w-px grow border-l-2 border-dashed"
+                  style={{ borderColor: style.line }}
+                />
+              )}
             </div>
-            {/* Content */}
             <div className={`pb-4 ${isLast ? "pb-0" : ""}`}>
-              <div className={`text-xs font-semibold uppercase tracking-wider ${s.label}`}>{step.stage}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: style.label }}>
+                {step.stage}
+              </div>
               <div className="mt-0.5 text-sm text-gray-300 leading-snug">{step.detail}</div>
             </div>
           </li>
@@ -786,9 +795,21 @@ export default function Dashboard() {
                   return "#34d399";
                 }}
 
-                linkColor={() => "#475569"}
-
-                linkDirectionalParticles={0}
+                linkColor={(link: any) => {
+                  const confidence = (link as any).confidence ?? 0.5;
+                  const r = 71 + Math.floor(confidence * 184);
+                  const g = 85 + Math.floor(confidence * 170);
+                  const b = 105 + Math.floor(confidence * 150);
+                  return `rgb(${r}, ${g}, ${b})`;
+                }}
+                linkWidth={(link: any) => {
+                  const confidence = (link as any).confidence ?? 0.5;
+                  return 1 + confidence * 2;
+                }}
+                linkDirectionalParticles={(link: any) => {
+                  const confidence = (link as any).confidence ?? 0.5;
+                  return confidence > 0.8 ? 2 : 0;
+                }}
                 linkDirectionalParticleSpeed={0.02}
 
                 cooldownTicks={100}

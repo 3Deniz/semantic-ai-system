@@ -1,0 +1,27 @@
+# TITLE: Statistics Extended
+# TYPE: knowledge
+# SPACES: statistics, arithmetic, semantic
+
+## DATA
+
+# Merkezi eğilim
+mean(data) equals sum(data)/count(data)
+median(sorted_data) equals middle_value
+mode(data) equals most_frequent_value
+
+# Yayılım ölçüleri
+range(data) equals max(data) - min(data)
+variance(data) equals sum((x - mean)^2)/(n-1)
+std_dev(data) equals sqrt(variance)
+
+# Olasılık dağılımları
+normal_pdf(x,mu,sigma) equals (1/(sigma*sqrt(2*pi))) * e^(-(x-mu)^2/(2*sigma^2))
+binomial_pdf(k,n,p) equals C(n,k) * p^k * (1-p)^(n-k)
+poisson_pdf(k,lambda) equals e^(-lambda) * lambda^k / k!
+
+# Regresyon
+linear_regression(x,y) equals slope*x + intercept
+correlation_coefficient(x,y) equals cov(x,y)/(std_dev(x)*std_dev(y))
+
+# Özel değerler
+z_score(x,mu,sigma) equals (x-mu)/sigma

@@ -1,0 +1,18 @@
+# TITLE: Square Roots
+# TYPE: knowledge
+# SPACES: arithmetic, semantic
+
+## DATA
+
+sqrt(1) equals 1
+sqrt(4) equals 2
+sqrt(9) equals 3
+sqrt(16) equals 4
+sqrt(25) equals 5
+sqrt(36) equals 6
+sqrt(49) equals 7
+sqrt(64) equals 8
+sqrt(81) equals 9
+sqrt(100) equals 10
+sqrt(121) equals 11
+sqrt(144) equals 12

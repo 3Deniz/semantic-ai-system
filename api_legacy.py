@@ -13,7 +13,7 @@ import logging
 import shutil
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import numpy as np
 from config import (
     ACTIONS, GRAPH_FILE, TMS_DECAY_RATE, TMS_MIN_CONFIDENCE,
@@ -24,6 +24,7 @@ from config import (
     INGEST_RATE_LIMIT_MAX_REQUESTS, INGEST_RATE_LIMIT_WINDOW_SECONDS,
     ENABLE_SPACY_DEP_PARSER, SPACY_MODEL_NAME,
     CURRICULUM_STATE_FILE, CURRICULUM_ERROR_TOLERANCE, CURRICULUM_STABILITY_WINDOW,
+    JEPA_EARLY_STOPPING_LOSS, JEPA_EARLY_STOPPING_PATIENCE,
 )
 from learning.jepa import JEPAModel, ACTION_DIM, STATE_DIM
 from learning.curriculum import CurriculumController, PrerequisiteNotMetError
@@ -60,6 +61,7 @@ from learning.rule_learning import RuleLearner
 from learning.online_learning import OnlineLearner
 from memory.graph_store import GraphStore
 from memory.concept_space_embeddings import ConceptSpaceEmbeddings
+from core.number_parser import NumberParser
 from core.pdf_ingestion import PDFIngestionError
 from core.symbolic_math import compute_arithmetic, compute_calculus, compute_definite_integral, compute_derivative_advanced, compute_algebra, solve_equation
 from core.symbolic_math import _format_number
@@ -119,6 +121,7 @@ _ingest_rate_bucket: dict[str, deque] = defaultdict(deque)
 _loop_artifact_lock = threading.Lock()
 _loop_artifacts = deque(maxlen=200)
 _training_pdf_archive_root = Path(__file__).resolve().parent / "artifacts" / "training_pdfs"
+SEED_TXT_DIR = Path(__file__).resolve().parent / "artifacts" / "seed_texts"
 _concept_space_embeddings = ConceptSpaceEmbeddings(Path(__file__).resolve().parent / "artifacts" / "concept_space_embeddings.json")
 
 
@@ -677,15 +680,21 @@ def embed_state_multispace(state):
 # =========================
 # ✅ JEPA STATE VECTOR HELPER
 
-def _state_to_vec(state_set) -> np.ndarray:
+def _state_to_vec(state_set, step_in_episode: int = 0) -> np.ndarray:
     """Convert a state set (or anything parse_state can handle) to a
     7-dim float32 JEPA embedding vector.
 
     Dimensions match learning/jepa.py STATE_DIM = 7:
-      [flood, collapse, crisis, damage, barrier, evacuated, temporal]
+      [flood, collapse, crisis, damage, barrier, evacuated, threat_intensity]
+
+    Uses threat intensity derived solely from the current state to preserve
+    the Markov property (no cross-episode information leakage).
     """
     if not isinstance(state_set, set):
         state_set = set(parse_state(state_set))
+    threat_tokens = ["flood", "collapse", "crisis", "damage"]
+    threat_count = sum(1 for t in threat_tokens if t in state_set)
+    threat_intensity = min(1.0, threat_count / 4.0)
     return np.array([
         float("flood"     in state_set),
         float("collapse"  in state_set),
@@ -693,7 +702,7 @@ def _state_to_vec(state_set) -> np.ndarray:
         float("damage"    in state_set),
         float("barrier"   in state_set),
         float("evacuated" in state_set),
-        float(len(recent_states)) / 6.0,   # normalised temporal
+        threat_intensity,
     ], dtype=np.float32)
 
 def _action_idx(action: str) -> int:
@@ -704,7 +713,9 @@ def _action_idx(action: str) -> int:
 # Called once after RL training to warm-start the JEPA model on the
 # state-action-nextstate transitions implied by the Q-table.
 
-def _train_jepa_from_qtable(epochs: int = JEPA_WARMUP_EPOCHS) -> int:
+def _train_jepa_from_qtable(epochs: int = JEPA_WARMUP_EPOCHS,
+                            target_loss: float = JEPA_EARLY_STOPPING_LOSS,
+                            patience: int = JEPA_EARLY_STOPPING_PATIENCE) -> int:
     """Train JEPA on experiences derived from main.Q and simulate_outcome.
 
     For each (state, action) key in the Q-table we simulate
@@ -712,13 +723,21 @@ def _train_jepa_from_qtable(epochs: int = JEPA_WARMUP_EPOCHS) -> int:
     resulting triples.  The simulation is run ``epochs`` times over the
     whole key set to improve convergence.
 
+    Supports early stopping when loss stabilises below ``target_loss``.
+
     Returns the total number of SGD updates performed.
     """
     keys = list({k[0] for k in main.Q.keys()})   # unique state tuples
 
     total = 0
-    for _ in range(epochs):
+    best_loss = float("inf")
+    epochs_without_improvement = 0
+
+    for epoch in range(epochs):
         random.shuffle(keys)
+        epoch_loss = 0.0
+        samples_in_epoch = 0
+
         for state_key in keys:
             state_set = set(state_key)
             s_vec = _state_to_vec(state_set)
@@ -727,8 +746,25 @@ def _train_jepa_from_qtable(epochs: int = JEPA_WARMUP_EPOCHS) -> int:
                     _, next_state = simulate_outcome(state_key, action)
                     ns_vec = _state_to_vec(set(next_state))
                     with _jepa_lock:
-                        _jepa.update(s_vec, _action_idx(action), ns_vec)
+                        loss = _jepa.update(s_vec, _action_idx(action), ns_vec)
+                    epoch_loss += loss
+                    samples_in_epoch += 1
                     total += 1
+
+        avg_loss = epoch_loss / max(1, samples_in_epoch)
+
+        if avg_loss < target_loss:
+            if avg_loss < best_loss - target_loss * 0.1:
+                best_loss = avg_loss
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+
+            if epochs_without_improvement >= patience:
+                print(f"[JEPA] Early stopping at epoch {epoch+1}, loss={avg_loss:.6f}")
+                break
+        else:
+            epochs_without_improvement = 0
 
     return total
 
@@ -926,7 +962,7 @@ def calculate_conflicts():
 # =========================
 # ✅ HYBRID DECISION
 
-def hybrid_decision(state, return_diagnostics: bool = False):
+def hybrid_decision(state, return_diagnostics: bool = False, step: int = 0):
     global inference_count
     with _inference_lock:
         inference_count += 1
@@ -945,7 +981,8 @@ def hybrid_decision(state, return_diagnostics: bool = False):
         for a in ACTIONS
     }
 
-    recent_states.append(key)
+    with _inference_lock:
+        recent_states.append(key)
 
     if "collapse" in parsed or "crisis" in parsed:
         best = "evacuate"
@@ -959,33 +996,27 @@ def hybrid_decision(state, return_diagnostics: bool = False):
             best = max(base_scores, key=base_scores.get)
 
     thought_trace = None
-    thought_override = False
     if _thought_loop is not None:
         try:
             thought_trace = _thought_loop.think(parsed_set)
-            thought_override = thought_trace.get("confidence", 0) > 0.7
-            if thought_override:
-                best = thought_trace.get("action", best)
         except Exception:
             logger.exception("Thought loop decision failed")
 
-    if not thought_override:
-        _jepa_online_update(parsed, best)
+    _jepa_online_update(parsed, best, step=step)
 
     if return_diagnostics:
         return base_scores, best, {
             "thought_trace": thought_trace,
-            "thought_override": thought_override,
         }
     return base_scores, best
 
 
-def _jepa_online_update(parsed_state, action: str) -> None:
+def _jepa_online_update(parsed_state, action: str, step: int = 0) -> None:
     """Perform one online JEPA update for the chosen (state, action) transition."""
     try:
-        s_vec = _state_to_vec(set(parsed_state))
+        s_vec = _state_to_vec(set(parsed_state), step_in_episode=step)
         _, next_state = simulate_outcome(parsed_state, action)
-        ns_vec = _state_to_vec(set(next_state))
+        ns_vec = _state_to_vec(set(next_state), step_in_episode=step)
         with _jepa_lock:
             loss = _jepa.update(s_vec, _action_idx(action), ns_vec)
         _jepa_recent_errors.append(loss)
@@ -1106,6 +1137,12 @@ async def lifespan(application: FastAPI):
     _graph_store.load(_kg)
     print(f"[OK] Knowledge graph loaded ({len(_kg.triples)} triples)")
 
+    if len(_kg.triples) == 0:
+        print("[STARTUP] No existing knowledge found. Loading seed knowledge...")
+        seed_result = _load_seed_knowledge()
+        _graph_store.save(_kg)
+        print(f"[STARTUP] Seed knowledge loaded: {seed_result['triples_loaded']} triples ({seed_result.get('txt_triples', 0)} from TXT files)")
+
     print("[TRAIN] RL training started...")
     main.train()
     print("[OK] RL training complete")
@@ -1186,10 +1223,11 @@ def get_inference_rate():
     return int(rate)
 
 def get_cycles():
-    counts = {}
-    for s in recent_states:
-        counts[s] = counts.get(s, 0) + 1
-    return sum(1 for v in counts.values() if v > 2)
+    with _inference_lock:
+        counts = {}
+        for s in recent_states:
+            counts[s] = counts.get(s, 0) + 1
+        return sum(1 for v in counts.values() if v > 2)
 
 # =========================
 # ✅ API
@@ -1772,12 +1810,43 @@ def _known_semantic_tokens() -> set[str]:
         known.update(_tokenize_query(str(s)))
         known.update(_tokenize_query(str(r)))
         known.update(_tokenize_query(str(o)))
+    known.update(NumberParser.known_tokens())
     return known
 
 
 def _query_answer_policy(query: str) -> dict[str, object]:
     normalized = str(query or "").strip().lower()
     tokens = _tokenize_query(normalized)
+
+    # Early detection: absolute value like |-5|
+    if '|' in normalized:
+        if re.search(r'\|-?\d+(?:\.\d+)?\|', normalized):
+            return {
+                "should_answer": True,
+                "reason": "absolute_value_expression",
+                "matched_tokens": [],
+                "missing_tokens": [],
+            }
+
+    # Early detection: any expression with digits and an operator (any length)
+    if re.search(r"\d+\s*[+\-*/]\s*\d+", normalized):
+        return {
+            "should_answer": True,
+            "reason": "arithmetic_expression",
+            "matched_tokens": [],
+            "missing_tokens": [],
+        }
+
+    # Space-separated numbers (e.g. "4 1" from URL-decoded "4+1")
+    space_parts = normalized.strip().split()
+    if len(space_parts) == 2 and space_parts[0].lstrip('-').isdigit() and space_parts[1].lstrip('-').isdigit():
+        return {
+            "should_answer": True,
+            "reason": "arithmetic_expression_space",
+            "matched_tokens": [],
+            "missing_tokens": [],
+        }
+
     symbolic_arithmetic = compute_arithmetic(normalized) is not None
     symbolic_calculus = compute_calculus(normalized) is not None
     symbolic_def_integral = bool(re.search(r"integral\s+from\s+[0-9.]+", normalized, flags=re.I))
@@ -1804,9 +1873,23 @@ def _query_answer_policy(query: str) -> dict[str, object]:
     known = _known_semantic_tokens()
     matched = sorted(tokens & known)
     missing = sorted(tokens - known)
+
+    if missing:
+        new_matched = []
+        still_missing = []
+        for token in missing:
+            num = NumberParser.parse_number(token)
+            if num is not None:
+                new_matched.append(token)
+            else:
+                still_missing.append(token)
+        if new_matched:
+            matched = sorted(set(matched) | set(new_matched))
+            missing = still_missing
+
     return {
-        "should_answer": bool(matched),
-        "reason": "matched_known_tokens" if matched else "unknown_concept_tokens",
+        "should_answer": bool(matched) or bool(re.search(r'\d', normalized)),
+        "reason": "matched_known_tokens" if matched else ("has_digits" if re.search(r'\d', normalized) else "unknown_concept_tokens"),
         "matched_tokens": matched,
         "missing_tokens": missing,
     }
@@ -1888,7 +1971,26 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
     explicit_calculus_intent = bool(
         re.search(r"\b(integral|integrate|derivative|turev)\b|d/d[a-z]", query, flags=re.I)
     )
-    arithmetic = compute_arithmetic(query)
+    # Absolute value handler — must come BEFORE compute_arithmetic
+    # because compute_arithmetic strips | chars and misparses |-5| as -5.
+    _abs_arithmetic = None
+    if '|' in query:
+        _abs_match = re.search(r'\|(-?\d+(?:\.\d+)?)\|', query)
+        if _abs_match:
+            try:
+                _abs_val = float(_abs_match.group(1))
+                _abs_result = abs(_abs_val)
+                from types import SimpleNamespace
+                _abs_arithmetic = SimpleNamespace(
+                    expression=f"|{_abs_val}|",
+                    key=f"abs_{str(_abs_val).replace('.', 'dot').replace('-', 'neg')}",
+                    value=str(int(_abs_result) if _abs_result.is_integer() else _abs_result),
+                    steps=[f"|{_abs_val}| = {_abs_result}"]
+                )
+            except (ValueError, TypeError):
+                pass
+
+    arithmetic = _abs_arithmetic if _abs_arithmetic is not None else compute_arithmetic(query)
     calculus = compute_calculus(query)
     def_integral = compute_definite_integral(query) if re.search(r"integral\s+from\s+[0-9.]+", query, flags=re.I) else None
     adv_deriv = compute_derivative_advanced(query) if re.search(r"d/d[a-z]|derivative\s+of", query, flags=re.I) else None
@@ -1897,6 +1999,99 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
     arithmetic_key = None
     arithmetic_result = None
     arithmetic_missing: list[str] = []
+
+    # Addition handler - works for ANY digit length
+    if arithmetic is None and re.search(r"\d+\s*\+?\s*\d+", query):
+        match = re.search(r"(\d+)\s*\+\s*(\d+)", query)
+        if not match:
+            match = re.search(r"(\d+)\s+(\d+)", query)
+        if match:
+            try:
+                left = int(match.group(1))
+                right = int(match.group(2))
+                result = left + right
+                from types import SimpleNamespace
+                arithmetic = SimpleNamespace(
+                    expression=f"{left}+{right}",
+                    key=f"plus_{left}_{right}",
+                    value=str(result),
+                    steps=[f"{left} + {right} = {result}"],
+                )
+            except (ValueError, TypeError):
+                pass
+
+    # Exponent handler (2^10)
+    if arithmetic is None and '^' in query:
+        parts = query.split('^')
+        if len(parts) == 2:
+            try:
+                base = int(parts[0].strip())
+                exp = int(parts[1].strip())
+                result = base ** exp
+                from types import SimpleNamespace
+                arithmetic = SimpleNamespace(
+                    expression=f"{base}^{exp}",
+                    key=f"pow_{base}_{exp}",
+                    value=str(result),
+                    steps=[f"{base}^{exp} = {result}"]
+                )
+            except (ValueError, TypeError):
+                pass
+
+    # Factorial handler (5!)
+    if arithmetic is None and '!' in query:
+        import math
+        match = re.search(r'(\d+)!', query)
+        if match:
+            try:
+                n = int(match.group(1))
+                result = math.factorial(n)
+                from types import SimpleNamespace
+                arithmetic = SimpleNamespace(
+                    expression=f"{n}!",
+                    key=f"factorial_{n}",
+                    value=str(result),
+                    steps=[f"{n}! = {result}"]
+                )
+            except (ValueError, TypeError):
+                pass
+
+    # Modulus handler (10 mod 3)
+    if arithmetic is None and 'mod' in query.lower():
+        match = re.search(r'(\d+)\s+mod\s+(\d+)', query.lower())
+        if match:
+            try:
+                a = int(match.group(1))
+                b = int(match.group(2))
+                if b != 0:
+                    result = a % b
+                    from types import SimpleNamespace
+                    arithmetic = SimpleNamespace(
+                        expression=f"{a} mod {b}",
+                        key=f"mod_{a}_{b}",
+                        value=str(result),
+                        steps=[f"{a} mod {b} = {result}"]
+                    )
+            except (ValueError, TypeError):
+                pass
+
+    # Absolute value handler (|-5|)
+    if arithmetic is None and '|' in query:
+        match = re.search(r'\|(-?\d+(?:\.\d+)?)\|', query)
+        if match:
+            try:
+                val = float(match.group(1))
+                result = abs(val)
+                from types import SimpleNamespace
+                arithmetic = SimpleNamespace(
+                    expression=f"|{val}|",
+                    key=f"abs_{str(val).replace('.', 'dot').replace('-', 'neg')}",
+                    value=str(int(result) if result.is_integer() else result),
+                    steps=[f"|{val}| = {result}"]
+                )
+            except (ValueError, TypeError):
+                pass
+
     if arithmetic is not None:
         arithmetic_key = arithmetic.key
         arithmetic_result = arithmetic.value
@@ -2177,7 +2372,125 @@ def _search_semantic_facts(query: str, limit: int = 50) -> list[dict]:
     return results[:limit]
 
 
-def _reset_learning_state(include_archives: bool = False) -> dict[str, object]:
+def _load_seed_from_texts() -> int:
+    """Load all seed TXT files from artifacts/seed_texts/ directory.
+
+    Each line format: subject relation object
+    Example: numeracy knows_digit 0
+
+    Returns:
+        Number of triples loaded
+    """
+    if not SEED_TXT_DIR.exists():
+        print(f"[SEED] Directory not found: {SEED_TXT_DIR}")
+        return 0
+
+    total = 0
+
+    for txt_path in sorted(SEED_TXT_DIR.glob("*.txt")):
+        try:
+            content = txt_path.read_text(encoding="utf-8")
+            lines = content.strip().split('\n')
+            file_count = 0
+
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+
+                parts = line.split()
+                if len(parts) >= 3:
+                    subject = parts[0]
+                    relation = parts[1]
+                    obj = ' '.join(parts[2:])
+                    confidence = 1.0
+
+                    if _tms.resolve_conflict((subject, relation, obj), confidence):
+                        _tms.add_belief((subject, relation, obj), confidence, {
+                            "source_type": "text_seed",
+                            "source_document": txt_path.name,
+                            "stage": "validated",
+                        })
+                        _kg.add(subject, relation, obj, confidence, {
+                            "source_type": "text_seed",
+                            "source_document": txt_path.name,
+                        })
+                        total += 1
+                        file_count += 1
+
+            print(f"[SEED] Loaded {txt_path.name}: {file_count} triples")
+        except Exception as e:
+            print(f"[SEED] Failed to load {txt_path.name}: {e}")
+
+    return total
+
+
+def _load_arithmetic_examples_from_seed() -> list[tuple[str, str]]:
+    """Load arithmetic examples from seed_texts/*.txt files."""
+    examples = []
+    if not SEED_TXT_DIR.exists():
+        return examples
+    for txt_path in SEED_TXT_DIR.glob("*.txt"):
+        content = txt_path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if ' equals ' in line:
+                parts = line.split(' equals ')
+                if len(parts) == 2:
+                    expr, result = parts[0].strip(), parts[1].strip()
+                    if any(op in expr for op in ['+', '-', '*', '/', '^', '!', 'mod']):
+                        examples.append((expr, result))
+    return examples
+
+
+def _get_curriculum_phases() -> list[str]:
+    """Load curriculum phase order from config file, with fallback."""
+    config_path = Path(__file__).resolve().parent / "config" / "curriculum_phases.json"
+    if config_path.exists():
+        try:
+            import json
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            return data.get("phases", CURRICULUM_PHASES)
+        except Exception:
+            pass
+    return list(CURRICULUM_PHASES)
+
+
+def _load_seed_knowledge() -> dict:
+    """Load all seed knowledge into KG and TMS."""
+    from core.data_loader import _DOMAIN_SEED_FACTS, _DOMAIN_SEED_TRANSITIONS
+    from core.number_parser import NumberParser
+
+    total = 0
+
+    for fact in _DOMAIN_SEED_FACTS:
+        if _tms.resolve_conflict((fact["subject"], fact["relation"], fact["object"]), fact["confidence"]):
+            _tms.add_belief((fact["subject"], fact["relation"], fact["object"]), fact["confidence"])
+            _kg.add(fact["subject"], fact["relation"], fact["object"], fact["confidence"])
+            total += 1
+
+    for token in NumberParser.known_tokens():
+        if token.isdigit() or (token.startswith('0.') and token.replace('.', '').isdigit()):
+            _kg.add("numeracy", "knows_number", token, 1.0)
+            total += 1
+
+    for expr, result in _load_arithmetic_examples_from_seed():
+        _kg.add(expr, "equals", result, 1.0)
+        total += 1
+
+    for phase in _get_curriculum_phases():
+        _kg.add("curriculum", "completed_phase", phase, 1.0)
+        total += 1
+
+    txt_count = _load_seed_from_texts()
+    total += txt_count
+
+    return {"triples_loaded": total, "txt_triples": txt_count}
+
+
+def _reset_learning_state(include_archives: bool = False, mode: str = "soft") -> dict[str, object]:
     global _kg, _tms, _parser, _concept_learner, _rule_learner, _online_learner, _relations_builder, _data_loader, _concept_space_embeddings
 
     before = {
@@ -2224,6 +2537,20 @@ def _reset_learning_state(include_archives: bool = False) -> dict[str, object]:
         except Exception:
             logger.exception("Failed to remove training archives")
 
+    if mode in ("hard", "full"):
+        if Path(GRAPH_FILE).exists():
+            Path(GRAPH_FILE).unlink()
+        seed_result = _load_seed_knowledge()
+        print(f"[RESET] Seed knowledge loaded: {seed_result['triples_loaded']} triples ({seed_result.get('txt_triples', 0)} from TXT files)")
+        _graph_store.save(_kg)
+
+    if mode == "full":
+        global _jepa
+        _jepa = JEPAModel()
+        jepa_updates = _train_jepa_from_qtable(epochs=JEPA_WARMUP_EPOCHS)
+        print(f"[RESET] JEPA retrained: {jepa_updates} updates")
+        _curriculum.reset()
+
     after = {
         "triples": len(getattr(_kg, "triples", [])),
         "beliefs": len(getattr(_tms, "beliefs", [])),
@@ -2233,6 +2560,7 @@ def _reset_learning_state(include_archives: bool = False) -> dict[str, object]:
         "before": before,
         "after": after,
         "archives_removed": archives_removed,
+        "seed_loaded": seed_result if mode in ("hard", "full") else None,
     }
 
 
@@ -2494,18 +2822,26 @@ def get_learning_bootstrap_plan():
 @app.post("/learn/reset")
 def reset_learning_state(
     confirm: bool = Query(default=False),
+    mode: str = Query(default="soft", pattern="^(soft|hard|full)$"),
     include_archives: bool = Query(default=False),
 ):
-    """Reset in-memory learning state and concept-space stores for clean re-training."""
+    """Reset learning state.
+
+    Modes:
+    - soft: Clear memory, reload from existing graph.json (current behavior)
+    - hard: Clear memory, DELETE graph.json, reload from seed knowledge
+    - full: Clear memory, DELETE graph.json, reload seed, retrain JEPA
+    """
     try:
         if not confirm:
             raise HTTPException(
                 status_code=400,
                 detail="Pass confirm=true to reset learning state.",
             )
-        result = _reset_learning_state(include_archives=include_archives)
+        result = _reset_learning_state(include_archives=include_archives, mode=mode)
         return {
             "ok": True,
+            "mode": mode,
             "reset": result,
         }
     except HTTPException:
@@ -2513,6 +2849,35 @@ def reset_learning_state(
     except Exception:
         logger.exception("Request failed")
         return {"error": "Internal server error"}
+
+
+@app.get("/seed/status")
+def seed_status():
+    """Return the status of seed knowledge from TXT files."""
+    try:
+        txt_files = list(SEED_TXT_DIR.glob("*.txt")) if SEED_TXT_DIR.exists() else []
+
+        txt_triple_count = 0
+        for s, r, o, c in _kg.triples:
+            metadata = _kg.get_metadata(s, r, o)
+            if metadata.get("source_type") == "text_seed":
+                txt_triple_count += 1
+
+        from core.numeracy import get_completed_phases
+        completed_phases = get_completed_phases(_kg)
+
+        return {
+            "status": "ok",
+            "seed_txt_directory_exists": SEED_TXT_DIR.exists(),
+            "seed_txt_count": len(txt_files),
+            "seed_txts": [f.name for f in txt_files],
+            "kg_triples_total": len(_kg.triples),
+            "kg_triples_from_texts": txt_triple_count,
+            "completed_curriculum_phases": sorted(completed_phases),
+            "all_phases_complete": len(completed_phases) == 6,
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.post("/learn/curriculum/economy/phase/{phase}")
@@ -2827,6 +3192,189 @@ def run_primary_drip(
                 "delta": delta,
             },
             "executed_cycles": executed_cycles,
+        }
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+# =========================
+# ✅ INDUCTIVE LEARNING (Pattern extraction from examples)
+from core.inductive_learner import InductiveLearner, CuriousLearner, AnalogicalReasoner
+
+_inductive_learner = InductiveLearner()
+_curious_learner = CuriousLearner(_inductive_learner)
+_analogy_reasoner = AnalogicalReasoner(_inductive_learner, config_path="config/analogy_map.json")
+
+
+class InductiveRequest(BaseModel):
+    predicate: str
+    examples: list[list]
+
+
+class AskRequest(BaseModel):
+    predicate: str
+    subject: Any
+
+
+class FeedbackRequest(BaseModel):
+    predicate: str
+    subject: Any
+    correct_object: Any
+
+
+class PredictRequest(BaseModel):
+    predicate: str
+    subject: Any
+
+
+class AnalogyRequest(BaseModel):
+    source: str
+    target: str
+
+
+@app.post("/learn/inductive")
+def learn_inductive(req: InductiveRequest):
+    try:
+        predicate = req.predicate
+        examples = [(s, o) for s, o in req.examples]
+        if not predicate or not examples:
+            raise HTTPException(status_code=400, detail="Missing predicate or examples")
+        learned_rule = _inductive_learner.add_examples(predicate, examples)
+        if learned_rule:
+            return {
+                "ok": True,
+                "predicate": predicate,
+                "rule": {
+                    "type": learned_rule.rule_type,
+                    "description": learned_rule.description,
+                    "confidence": learned_rule.confidence,
+                    "examples_used": len(_inductive_learner.examples.get(predicate, [])),
+                },
+            }
+        return {
+            "ok": True,
+            "predicate": predicate,
+            "message": "Need more examples (at least 3)",
+            "examples_used": len(_inductive_learner.examples.get(predicate, [])),
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+
+@app.post("/learn/ask")
+def learn_ask(req: AskRequest):
+    try:
+        predicate = req.predicate
+        subject = req.subject
+        if not predicate or subject is None:
+            raise HTTPException(status_code=400, detail="Missing predicate or subject")
+        question = _curious_learner.ask(predicate, subject)
+        return {"ok": True, "question": question}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+
+@app.post("/learn/feedback")
+def learn_feedback(req: FeedbackRequest):
+    try:
+        predicate = req.predicate
+        subject = req.subject
+        correct_object = req.correct_object
+        if not predicate or subject is None or correct_object is None:
+            raise HTTPException(status_code=400, detail="Missing predicate, subject, or correct_object")
+        _curious_learner.learn_from_feedback(predicate, subject, correct_object)
+        learned_rule = _inductive_learner.add_examples(predicate, [(subject, correct_object)])
+        return {
+            "ok": True,
+            "message": f"Learned: {subject} {predicate} {correct_object}",
+            "pattern_found": learned_rule.description if learned_rule else "Pattern not yet found, need more examples",
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+
+@app.post("/learn/predict")
+def learn_predict(req: PredictRequest):
+    try:
+        predicate = req.predicate
+        subject = req.subject
+        if not predicate or subject is None:
+            raise HTTPException(status_code=400, detail="Missing predicate or subject")
+        prediction = _inductive_learner.predict(predicate, subject)
+        confidence = _inductive_learner.get_confidence(predicate)
+        return {
+            "ok": True,
+            "predicate": predicate,
+            "subject": subject,
+            "prediction": prediction,
+            "confidence": confidence,
+            "has_rule": prediction is not None,
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+
+@app.get("/learn/rules")
+def get_learn_rules():
+    try:
+        summary = _curious_learner.get_learning_summary()
+        return {"ok": True, "summary": summary}
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+
+@app.post("/learn/analogy")
+def learn_analogy(req: AnalogyRequest):
+    try:
+        source = req.source
+        target = req.target
+        if not source or not target:
+            raise HTTPException(status_code=400, detail="Missing source or target")
+        result = _analogy_reasoner.transfer_knowledge(source, target)
+        if result:
+            for rule in result.get("rules", []):
+                _inductive_learner.rules[target].append(rule)
+            return {
+                "ok": True,
+                "source": source,
+                "target": target,
+                "rules": [
+                    {"type": r.rule_type, "description": r.description, "confidence": r.confidence}
+                    for r in result.get("rules", [])
+                ],
+                "explanation": result.get("explanation"),
+            }
+        raise HTTPException(status_code=404, detail=f"No analogy found between {source} and {target}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Request failed")
+        return {"error": "Internal server error"}
+
+
+@app.get("/learn/inductive/status")
+def get_inductive_learning_status():
+    try:
+        return {
+            "ok": True,
+            "total_examples": sum(len(ex) for ex in _inductive_learner.examples.values()),
+            "total_rules": sum(len(rules) for rules in _inductive_learner.rules.values()),
+            "predicates_with_rules": list(_inductive_learner.rules.keys()),
+            "pending_questions": len(_curious_learner.pending_questions),
+            "learning_history_count": len(_curious_learner.learning_history),
         }
     except Exception:
         logger.exception("Request failed")

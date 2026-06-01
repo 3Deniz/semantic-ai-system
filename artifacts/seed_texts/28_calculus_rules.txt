@@ -1,0 +1,44 @@
+# TITLE: Calculus Runtime Rules
+# TYPE: knowledge
+# SPACES: calculus, arithmetic, semantic
+
+## DATA
+
+# Türev kuralları (genel)
+d/dx(c) equals 0
+d/dx(x) equals 1
+d/dx(x^2) equals 2*x
+d/dx(x^3) equals 3*x^2
+d/dx(x^4) equals 4*x^3
+d/dx(x^5) equals 5*x^4
+d/dx(1/x) equals -1/x^2
+d/dx(sqrt(x)) equals 1/(2*sqrt(x))
+d/dx(sin(x)) equals cos(x)
+d/dx(cos(x)) equals -sin(x)
+d/dx(tan(x)) equals sec^2(x)
+d/dx(e^x) equals e^x
+d/dx(ln(x)) equals 1/x
+d/dx(log10(x)) equals 1/(x*ln(10))
+
+# Türev kuralları (çarpım, bölüm, zincir)
+d/dx(f*g) equals f'*g + f*g'
+d/dx(f/g) equals (f'*g - f*g')/g^2
+d/dx(f(g(x))) equals f'(g(x)) * g'(x)
+
+# İntegral kuralları (genel)
+∫c dx equals c*x + C
+∫x dx equals x^2/2 + C
+∫x^2 dx equals x^3/3 + C
+∫x^3 dx equals x^4/4 + C
+∫1/x dx equals ln|x| + C
+∫e^x dx equals e^x + C
+∫sin(x) dx equals -cos(x) + C
+∫cos(x) dx equals sin(x) + C
+∫sec^2(x) dx equals tan(x) + C
+
+# Limit kuralları
+lim(x->0) sin(x)/x equals 1
+lim(x->0) (1-cos(x))/x equals 0
+lim(x->∞) 1/x equals 0
+lim(x->∞) e^x equals ∞
+lim(x->-∞) e^x equals 0

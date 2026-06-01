@@ -1,0 +1,27 @@
+# TITLE: Complex Analysis
+# TYPE: knowledge
+# SPACES: complex, arithmetic, semantic
+
+## DATA
+
+# Cauchy-Riemann denklemleri
+cauchy_riemann_u_x equals v_y
+cauchy_riemann_u_y equals -v_x
+analytic_function satisfies Cauchy-Riemann equations
+
+# Karmaşık integral
+contour_integral_C f(z) dz equals ∫_C f(z) dz
+cauchy_integral_theorem ∮_C f(z) dz equals 0 for analytic f
+cauchy_integral_formula f(a) equals (1/(2πi)) ∮_C f(z)/(z-a) dz
+derivative_formula f^(n)(a) equals (n!/(2πi)) ∮_C f(z)/(z-a)^(n+1) dz
+
+# Rezidü teoremi
+residue_theorem ∮_C f(z) dz equals 2πi * Σ Res(f, a_k)
+residue_at_simple_pole equals lim_{z→a} (z-a)*f(z)
+residue_at_pole_order_n equals (1/(n-1)!) * lim_{z→a} d^(n-1)/dz^(n-1) [(z-a)^n f(z)]
+
+# Laurent serisi
+laurent_series f(z) equals Σ a_n (z-z0)^n + Σ b_n (z-z0)^(-n)
+
+# Konformal haritalama
+mobius_transform(z) equals (az+b)/(cz+d)

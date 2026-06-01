@@ -89,3 +89,17 @@ SPACY_MODEL_NAME = os.environ.get("SPACY_MODEL_NAME", "en_core_web_sm")
 # Ingest API simple in-memory rate limit
 INGEST_RATE_LIMIT_MAX_REQUESTS = int(os.environ.get("INGEST_RATE_LIMIT_MAX_REQUESTS", "60"))
 INGEST_RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("INGEST_RATE_LIMIT_WINDOW_SECONDS", "60"))
+
+# =========================
+# ✅ JEPA EARLY STOPPING
+JEPA_EARLY_STOPPING_LOSS = float(os.environ.get("JEPA_EARLY_STOPPING_LOSS", "0.0001"))
+JEPA_EARLY_STOPPING_PATIENCE = int(os.environ.get("JEPA_EARLY_STOPPING_PATIENCE", "2"))
+
+# =========================
+# ✅ PARSER ENHANCEMENTS
+ENABLE_ENHANCED_NEGATION = _env_bool("ENABLE_ENHANCED_NEGATION", True)
+
+# =========================
+# ✅ PERFORMANCE TUNING
+KG_INDEX_CACHE_SIZE = int(os.environ.get("KG_INDEX_CACHE_SIZE", "10000"))
+THREAD_POOL_SIZE = int(os.environ.get("THREAD_POOL_SIZE", "4"))
